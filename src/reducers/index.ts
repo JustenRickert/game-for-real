@@ -1,5 +1,7 @@
 import { combineReducers } from "redux";
 
+import { worldReducer } from "./world/world";
+
 export const reducer = combineReducers({
-  test: (state: any = {}, action: any) => state
+  world: worldReducer
 });

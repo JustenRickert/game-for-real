@@ -1,63 +1,71 @@
 import React, { useRef, useState, useEffect, useReducer, Reducer } from "react";
+import { connect } from "react-redux";
+import { sample, isNull } from "lodash";
+
+import { DIMENSIONS } from "./config";
+
+import { moveAction, essenceAction } from "./reducers/world/world-action";
 
 import { Grid } from "./components/Grid";
 import { Player } from "./components/Player";
+import { Root, store } from "./store";
 
-const DIMENSIONS = { width: 10, height: 10 };
+const randomTime = (atLeast: number, upperBound: number) =>
+  atLeast + Math.random() * (upperBound - atLeast);
 
-const clamp = ({ x, y }: { x: number; y: number }) => {
-  if (x < 0) return { x: 0, y };
-  if (y < 0) return { x, y: 0 };
-  if (x >= DIMENSIONS.width) return { x: DIMENSIONS.width - 1, y };
-  if (y >= DIMENSIONS.height) return { x, y: DIMENSIONS.height - 1 };
-  return { x, y };
+const randomEssence = () => randomTime(2500, 10000);
+const usePlayerEssencePosition = (
+  essence: typeof essenceAction,
+  playerPosition: { x: number; y: number }
+) => {
+  const [currentTimeout, setCurrentTimeout] = useState<null | number>(null);
+  useEffect(() => {
+    if (!isNull(currentTimeout)) essence(playerPosition);
+    const newTimeout = randomEssence();
+    setTimeout(() => setCurrentTimeout(newTimeout), newTimeout);
+  }, [currentTimeout]);
 };
 
-type KeydownAction =
-  | "ArrowLeft"
-  | "ArrowRight"
-  | "ArrowUp"
-  | "ArrowDown"
-  | string;
+const randomMove = () => randomTime(1000, 5000);
+const usePlayerMovement = (move: typeof moveAction) => {
+  let timeout: number;
 
-const usePosition = () => {
-  const [position, dispatch] = useReducer<
-    Reducer<{ x: number; y: number }, KeydownAction>
-  >(
-    (state, key) => {
-      const { x, y } = state;
-      switch (key) {
-        case "ArrowLeft":
-          return clamp({ y, x: x - 1 });
-        case "ArrowRight":
-          return clamp({ y, x: x + 1 });
-        case "ArrowUp":
-          return clamp({ x, y: y - 1 });
-        case "ArrowDown":
-          return clamp({ x, y: y + 1 });
-      }
-      return state;
-    },
-    { x: 0, y: 0 }
-  );
-  const handleKeydown = (e: KeyboardEvent) => {
-    dispatch(e.key);
+  const handleRandomMove = () => {
+    move(sample(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"])!);
+    timeout = setTimeout(handleRandomMove, randomMove());
   };
+  const handleMove = (e: KeyboardEvent) => {
+    move(e.key);
+    clearTimeout(timeout);
+    timeout = setTimeout(handleRandomMove, 5000);
+  };
+
   useEffect(() => {
-    document.addEventListener("keydown", handleKeydown);
+    timeout = setTimeout(handleRandomMove, randomMove());
+    document.addEventListener("keydown", handleMove);
     return () => {
-      document.removeEventListener("keydown", handleKeydown);
+      document.removeEventListener("keydown", handleMove);
     };
   }, []);
-  return { position };
 };
 
-export const App = () => {
-  const { position } = usePosition();
+type Props = {
+  playerPosition: Root["world"]["playerPosition"];
+  positions: Root["world"]["positions"];
+  move: typeof moveAction;
+  essence: typeof essenceAction;
+};
+
+export const App = connect(
+  (state: Root) => ({ ...state.world }),
+  { move: moveAction, essence: essenceAction }
+)((props: Props) => {
+  usePlayerMovement(props.move);
+  usePlayerEssencePosition(props.essence, props.playerPosition);
   return (
     <div>
-      <Player position={position} />
-      <Grid size={DIMENSIONS} />
+      <Player position={props.playerPosition} />
+      <Grid size={DIMENSIONS} positions={props.positions} />
     </div>
   );
-};
+});
