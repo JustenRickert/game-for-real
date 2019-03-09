@@ -1,0 +1,15 @@
+@value squareLength 3em;
+@value squareBorder 1px;
+@value gridGap 1em;
+
+.grid {
+    display: grid;
+    grid-gap: gridGap;
+    max-width: 12em;
+}
+
+.square {
+    width: squareLength;
+    height: squareLength;
+    border: squareBorder solid black;
+}
