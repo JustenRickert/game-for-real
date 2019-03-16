@@ -1,4 +1,11 @@
+.player-wrapper {
+    position: absolute;
+    display: flex;
+}
+
 .player {
     position: absolute;
     background-color: gray;
+    transition: transform 0.25s;
+    transition-timing-function: ease-out;
 }

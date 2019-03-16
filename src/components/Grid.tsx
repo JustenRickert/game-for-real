@@ -6,10 +6,11 @@ import { Root } from "../store";
 
 export const Grid = (props: {
   size: { width: number; height: number };
-  positions: Root["world"]["positions"];
+  positions: Root["world"]["board"];
 }) => {
   const {
-    size: { width, height }
+    size: { width, height },
+    positions
   } = props;
   return (
     <div
@@ -18,13 +19,12 @@ export const Grid = (props: {
         gridTemplateColumns: `repeat(${width}, 1fr)`
       }}
     >
-      {range(width * height).map(i => {
-        const p = props.positions[i];
+      {positions.map((p, i) => {
         const { x, y } = p.position;
         return (
           <div key={i} className={styles.square}>
             <div children={`x:${x},y:${y}`} />
-            <div children={p.essence} />
+            <div children={p.points} />
           </div>
         );
       })}

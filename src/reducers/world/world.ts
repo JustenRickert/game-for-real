@@ -1,77 +1,178 @@
-import { Reducer } from "redux";
+import { combineReducers, Reducer } from "redux";
 import { isEqual, range } from "lodash";
 
 import { DIMENSIONS } from "../../config";
 
-import { MoveAction, EssenceAction } from "./world-action";
+import { move } from "./util";
 
-const clamp = (position: { x: number; y: number }) => {
-  const { x, y } = position;
-  if (x < 0) return { x: 0, y };
-  if (y < 0) return { x, y: 0 };
-  if (x >= DIMENSIONS.width) return { x: DIMENSIONS.width - 1, y };
-  if (y >= DIMENSIONS.height) return { x, y: DIMENSIONS.height - 1 };
-  return position;
-};
-
-type WorldAction = MoveAction | EssenceAction;
-
-type WorldState = {
-  playerPosition: { x: number; y: number };
+export type WorldState = {
+  player: {
+    points: number;
+    position: { x: number; y: number };
+  };
+  board: Board;
   positions: { essence: number; position: { x: number; y: number } }[];
 };
 
-const move = (key: string, position: { x: number; y: number }) => {
-  const { x, y } = position;
-  switch (key) {
-    case "ArrowLeft":
-      return clamp({ y, x: x - 1 });
-    case "ArrowRight":
-      return clamp({ y, x: x + 1 });
-    case "ArrowUp":
-      return clamp({ x, y: y - 1 });
-    case "ArrowDown":
-      return clamp({ x, y: y + 1 });
-  }
-  return position;
+type Board = {
+  position: { x: number; y: number };
+  points: number;
+}[];
+
+export type WorldAction =
+  | AddPlayerPointsAction
+  | MovePlayerPositionAction
+  | EssenceAction
+  | BoardAction;
+
+type BoardAction = AddBoardPoint | RemoveBoardPositionPoints;
+
+enum Actions {
+  AddPlayerPoints = "World/AddPlayerPoints",
+  MovePlayerPosition = "World/MovePlayerPosition",
+  RemoveBoardPoints = "WORLD/BOARD/REMOVE_BOARD_POINTS",
+  AddBoardPoint = "World/Board/AddPoint"
+}
+
+export type AddPlayerPointsAction = {
+  type: Actions.AddPlayerPoints;
+  points: number;
 };
 
-export const worldReducer: Reducer<WorldState, WorldAction> = (
+export const addPlayerPointsAction = (
+  points: number
+): AddPlayerPointsAction => ({
+  type: Actions.AddPlayerPoints,
+  points
+});
+
+export type MovePlayerPositionAction = {
+  type: Actions.MovePlayerPosition;
+  position: { x: number; y: number };
+};
+
+export const movePlayerPositionAction = (position: {
+  x: number;
+  y: number;
+}): MovePlayerPositionAction => ({
+  type: Actions.MovePlayerPosition,
+  position
+});
+
+export type RemoveBoardPositionPoints = {
+  type: Actions.RemoveBoardPoints;
+  position: { x: number; y: number };
+};
+
+export const removeBoardPositionPoints = (position: {
+  x: number;
+  y: number;
+}): RemoveBoardPositionPoints => ({
+  type: Actions.RemoveBoardPoints,
+  position
+});
+
+export type AddBoardPoint = {
+  type: Actions.AddBoardPoint;
+  position: { x: number; y: number };
+};
+
+export const addBoardPoint = (position: {
+  x: number;
+  y: number;
+}): AddBoardPoint => ({
+  type: Actions.AddBoardPoint,
+  position
+});
+
+export type EssenceAction = {
+  type: "World/AddEssence";
+  position: { x: number; y: number };
+};
+
+export const essenceAction = (position: {
+  x: number;
+  y: number;
+}): EssenceAction => ({ type: "World/AddEssence", position });
+
+const playerReducer: Reducer<WorldState["player"], WorldAction> = (
   state = {
-    playerPosition: { x: 0, y: 0 },
-    positions: range(DIMENSIONS.height).reduce<WorldState["positions"]>(
-      (positions, y) =>
-        positions.concat(
-          range(DIMENSIONS.width).map(x => ({
-            position: { x, y },
-            essence: 0
-          }))
-        ),
-      []
-    )
+    points: 0,
+    position: { x: 0, y: 0 }
   },
   action
 ) => {
   switch (action.type) {
-    case "World/Move": {
-      if (action.id === "player") {
-        return {
-          ...state,
-          playerPosition: move(action.direction, state.playerPosition)
-        };
-      }
-      throw new Error("Add enemy?");
+    case Actions.AddPlayerPoints: {
+      return { ...state, points: state.points + action.points };
     }
-    case "World/AddEssence": {
+    case Actions.MovePlayerPosition: {
       return {
         ...state,
-        positions: state.positions.map(p =>
-          isEqual(p.position, action.position)
-            ? { ...p, essence: p.essence + 1 }
-            : p
-        )
+        position: action.position
       };
     }
   }
   return state;
 };
+
+export const boardReducer: Reducer<Board, BoardAction> = (
+  state = range(DIMENSIONS.height).reduce<Board>(
+    (board, y) =>
+      board.concat(
+        range(DIMENSIONS.width).map(x => ({
+          position: { x, y },
+          points: 0
+        }))
+      ),
+    []
+  ),
+  action
+) => {
+  switch (action.type) {
+    case Actions.RemoveBoardPoints: {
+      return state.map(b =>
+        isEqual(b.position, action.position) ? { ...b, points: 0 } : b
+      );
+    }
+    case Actions.AddBoardPoint: {
+      return state.map(b =>
+        isEqual(b.position, action.position)
+          ? { ...b, points: b.points + 1 }
+          : b
+      );
+    }
+  }
+  return state;
+};
+
+const positionsReducer: Reducer<WorldState["positions"], WorldAction> = (
+  state = range(DIMENSIONS.height).reduce<WorldState["positions"]>(
+    (positions, y) =>
+      positions.concat(
+        range(DIMENSIONS.width).map(x => ({
+          position: { x, y },
+          essence: 0
+        }))
+      ),
+    []
+  ),
+  action
+) => {
+  switch (action.type) {
+    case "World/AddEssence": {
+      return state.map(p =>
+        isEqual(p.position, action.position)
+          ? { ...p, essence: p.essence + 1 }
+          : p
+      );
+    }
+  }
+  return state;
+};
+
+export const worldReducer = combineReducers({
+  player: playerReducer,
+  positions: positionsReducer,
+  board: boardReducer
+});
