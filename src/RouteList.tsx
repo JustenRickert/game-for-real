@@ -3,7 +3,12 @@ import { Omit } from "lodash";
 
 import { DIMENSIONS } from "./config";
 import { Player, PlayerProps } from "./components/Player";
-import { Info, InfoProps } from "./components/Info";
+import {
+  Info,
+  InfoProps,
+  SquareInfo,
+  SquareInfoProps
+} from "./components/Info";
 import { Board, GridProps } from "./components/Grid";
 import { Store, StoreProps } from "./components/Store";
 
@@ -12,8 +17,9 @@ const keys = <T extends {}>(t: T) => {
 };
 
 type GridPlayerProps = {
-  grid: Omit<GridProps, "size">;
+  board: GridProps["board"];
   player: PlayerProps;
+  onClickSquare: (position: { x: number; y: number }) => void;
 };
 
 const GridPlayer = (props: GridPlayerProps) => {
@@ -21,7 +27,11 @@ const GridPlayer = (props: GridPlayerProps) => {
     <div>
       <h1 children="The Grid" />
       <Player position={props.player.position} />
-      <Board size={DIMENSIONS} board={props.grid.board} />
+      <Board
+        onClickSquare={props.onClickSquare}
+        size={DIMENSIONS}
+        board={props.board}
+      />
     </div>
   );
 };
@@ -48,4 +58,16 @@ export const MainContentRouter = (props: {
   routerProps: GridPlayerProps & StoreProps;
 }) => {
   return routes[props.route](props.routerProps);
+};
+
+const secondaryRoutes = {
+  PlayerInfo: Info,
+  SquareInfo: SquareInfo
+};
+
+export const SecondaryContentRouter = (props: {
+  route: "PlayerInfo" | "SquareInfo";
+  routerProps: InfoProps & SquareInfoProps;
+}) => {
+  return <div>{secondaryRoutes[props.route](props.routerProps)}</div>;
 };

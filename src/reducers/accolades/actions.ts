@@ -12,16 +12,16 @@ export const checkAccolades: AccoladesThunk<
 > = (dispatch, getState) => {
   const state = getState();
   accolades
+    .filter(accolade => !state.accolades.attained.includes(accolade.type))
     .filter(accolade => accolade.meetsRequirement(state))
     .forEach(metAccolade => {
       if (
         !state.accolades.attained.some(
           attainedAccolade => attainedAccolade === metAccolade.type
         )
-      ) {
+      )
         dispatch(
           accoladesAction(accolade => accolade.concat(metAccolade.type))
         );
-      }
     });
 };

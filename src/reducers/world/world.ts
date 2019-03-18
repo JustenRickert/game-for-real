@@ -4,7 +4,7 @@ import { isEqual, range } from "lodash";
 import { DIMENSIONS } from "../../config";
 
 import { move } from "./util";
-import { number } from "prop-types";
+import { City, stubCity } from "./city";
 
 export type WorldState = {
   player: {
@@ -12,29 +12,36 @@ export type WorldState = {
     position: { x: number; y: number };
   };
   board: Board;
-  positions: { essence: number; position: { x: number; y: number } }[];
 };
 
-type Board = {
+export type BoardSquare = {
   position: { x: number; y: number };
-  placement: "City" | null;
+  placement: City | null;
   points: number;
-}[];
+};
+
+type Board = BoardSquare[];
 
 export type WorldAction =
   | AddPlayerPointsAction
   | MovePlayerPositionAction
-  | EssenceAction
   | BoardAction;
 
-type BoardAction = PlaceBoardAction | AddBoardPoint | RemoveBoardPositionPoints;
+type BoardAction =
+  | UpdatePlayer
+  | UpdateBoardCity
+  | PlaceBoardAction
+  | AddBoardPoint
+  | RemoveBoardPositionPoints;
 
 enum Actions {
   AddPlayerPoints = "World/AddPlayerPoints",
   BoardPlace = "World/Board/Place",
   MovePlayerPosition = "World/MovePlayerPosition",
   RemoveBoardPoints = "World/Board/RemoveBoardPoints",
-  AddBoardPoint = "World/Board/AddPoint"
+  UpdateBoardCity = "World/Board/UpdateCity",
+  AddBoardPoint = "World/Board/AddPoint",
+  UpdatePlayer = "World/Player/Update"
 }
 
 export type AddPlayerPointsAction = {
@@ -88,7 +95,22 @@ export const addBoardPoint = (position: {
   position
 });
 
-type PlaceBoardAction = {
+export type UpdateBoardCity = {
+  type: Actions.UpdateBoardCity;
+  position: { x: number; y: number };
+  update: (city: City) => City;
+};
+
+export const updateCity = (
+  position: { x: number; y: number },
+  update: (city: City) => City
+): UpdateBoardCity => ({
+  type: Actions.UpdateBoardCity,
+  position,
+  update
+});
+
+export type PlaceBoardAction = {
   type: Actions.BoardPlace;
   position: { x: number; y: number };
 };
@@ -101,15 +123,17 @@ export const placeBoardAction = (position: {
   position
 });
 
-export type EssenceAction = {
-  type: "World/AddEssence";
-  position: { x: number; y: number };
+export type UpdatePlayer = {
+  type: Actions.UpdatePlayer;
+  update: (player: WorldState["player"]) => WorldState["player"];
 };
 
-export const essenceAction = (position: {
-  x: number;
-  y: number;
-}): EssenceAction => ({ type: "World/AddEssence", position });
+export const updatePlayer = (
+  update: (player: WorldState["player"]) => WorldState["player"]
+): UpdatePlayer => ({
+  type: Actions.UpdatePlayer,
+  update
+});
 
 const playerReducer: Reducer<WorldState["player"], WorldAction> = (
   state = {
@@ -119,6 +143,9 @@ const playerReducer: Reducer<WorldState["player"], WorldAction> = (
   action
 ) => {
   switch (action.type) {
+    case Actions.UpdatePlayer: {
+      return action.update(state);
+    }
     case Actions.AddPlayerPoints: {
       return { ...state, points: state.points + action.points };
     }
@@ -147,10 +174,22 @@ export const boardReducer: Reducer<Board, BoardAction> = (
   action
 ) => {
   switch (action.type) {
+    case Actions.UpdateBoardCity: {
+      console.log("should run this shit");
+      return state.map(b => {
+        if (isEqual(b.position, action.position)) {
+          if (!b.placement || b.placement.type !== "City") {
+            throw new Error(`cant action ${action.type} on b.placement.type`);
+          }
+          return { ...b, placement: action.update(b.placement) };
+        }
+        return b;
+      });
+    }
     case Actions.BoardPlace: {
       return state.map(b =>
         isEqual(b.position, action.position)
-          ? { ...b, placement: "City" as "City" }
+          ? { ...b, placement: stubCity() }
           : b
       );
     }
@@ -170,33 +209,7 @@ export const boardReducer: Reducer<Board, BoardAction> = (
   return state;
 };
 
-const positionsReducer: Reducer<WorldState["positions"], WorldAction> = (
-  state = range(DIMENSIONS.height).reduce<WorldState["positions"]>(
-    (positions, y) =>
-      positions.concat(
-        range(DIMENSIONS.width).map(x => ({
-          position: { x, y },
-          essence: 0
-        }))
-      ),
-    []
-  ),
-  action
-) => {
-  switch (action.type) {
-    case "World/AddEssence": {
-      return state.map(p =>
-        isEqual(p.position, action.position)
-          ? { ...p, essence: p.essence + 1 }
-          : p
-      );
-    }
-  }
-  return state;
-};
-
 export const worldReducer = combineReducers({
   player: playerReducer,
-  positions: positionsReducer,
   board: boardReducer
 });

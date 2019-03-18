@@ -16,4 +16,9 @@
     width: squareLength;
     height: squareLength;
     border: squareBorder solid black;
+    cursor: pointer;
+}
+
+.square:hover {
+    background-color: yellow;
 }
