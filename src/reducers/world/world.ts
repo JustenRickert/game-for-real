@@ -4,6 +4,7 @@ import { isEqual, range } from "lodash";
 import { DIMENSIONS } from "../../config";
 
 import { move } from "./util";
+import { number } from "prop-types";
 
 export type WorldState = {
   player: {
@@ -16,6 +17,7 @@ export type WorldState = {
 
 type Board = {
   position: { x: number; y: number };
+  placement: "City" | null;
   points: number;
 }[];
 
@@ -25,12 +27,13 @@ export type WorldAction =
   | EssenceAction
   | BoardAction;
 
-type BoardAction = AddBoardPoint | RemoveBoardPositionPoints;
+type BoardAction = PlaceBoardAction | AddBoardPoint | RemoveBoardPositionPoints;
 
 enum Actions {
   AddPlayerPoints = "World/AddPlayerPoints",
+  BoardPlace = "World/Board/Place",
   MovePlayerPosition = "World/MovePlayerPosition",
-  RemoveBoardPoints = "WORLD/BOARD/REMOVE_BOARD_POINTS",
+  RemoveBoardPoints = "World/Board/RemoveBoardPoints",
   AddBoardPoint = "World/Board/AddPoint"
 }
 
@@ -85,6 +88,19 @@ export const addBoardPoint = (position: {
   position
 });
 
+type PlaceBoardAction = {
+  type: Actions.BoardPlace;
+  position: { x: number; y: number };
+};
+
+export const placeBoardAction = (position: {
+  x: number;
+  y: number;
+}): PlaceBoardAction => ({
+  type: Actions.BoardPlace,
+  position
+});
+
 export type EssenceAction = {
   type: "World/AddEssence";
   position: { x: number; y: number };
@@ -122,6 +138,7 @@ export const boardReducer: Reducer<Board, BoardAction> = (
       board.concat(
         range(DIMENSIONS.width).map(x => ({
           position: { x, y },
+          placement: null,
           points: 0
         }))
       ),
@@ -130,6 +147,13 @@ export const boardReducer: Reducer<Board, BoardAction> = (
   action
 ) => {
   switch (action.type) {
+    case Actions.BoardPlace: {
+      return state.map(b =>
+        isEqual(b.position, action.position)
+          ? { ...b, placement: "City" as "City" }
+          : b
+      );
+    }
     case Actions.RemoveBoardPoints: {
       return state.map(b =>
         isEqual(b.position, action.position) ? { ...b, points: 0 } : b

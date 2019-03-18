@@ -1,4 +1,11 @@
-import React, { useRef, useState, useEffect, useReducer, Reducer } from "react";
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useReducer,
+  Reducer,
+  useMemo
+} from "react";
 import { connect } from "react-redux";
 import { sample, isNull } from "lodash";
 
@@ -7,9 +14,10 @@ import { MOVE_KEYS, DIMENSIONS } from "./config";
 import { moveAction, addRandomPoint } from "./reducers/world/actions";
 import { essenceAction } from "./reducers/world/world";
 import { Info } from "./components/Info";
-import { Grid } from "./components/Grid";
+import { Board } from "./components/Grid";
 import { Player } from "./components/Player";
 import { Root, store } from "./store";
+import { RouteList, MainContentRouter } from "./RouteList";
 
 type ArrowKey = "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";
 
@@ -50,8 +58,10 @@ const usePlayerMovement = (move: typeof moveAction) => {
 };
 
 type Props = {
+  accolades: Root["accolades"];
+  board: Root["world"]["board"];
   player: Root["world"]["player"];
-  positions: Root["world"]["board"];
+  positions: Root["world"]["positions"];
   move: typeof moveAction;
   essence: typeof essenceAction;
   randomPoint: typeof addRandomPoint;
@@ -59,19 +69,27 @@ type Props = {
 
 export const App = connect(
   (state: Root) => ({
-    player: state.world.player,
-    positions: state.world.board
+    accolades: state.accolades,
+    board: state.world.board,
+    player: state.world.player
   }),
   { move: moveAction, essence: essenceAction, randomPoint: addRandomPoint }
 )((props: Props) => {
+  const [route, setRoute] = useState<"Grid" | "Store">("Grid");
   usePlayerMovement(props.move);
   useAddRandomPointsToBoard(props.randomPoint);
+  const routerProps = useMemo(
+    () => ({
+      accolades: props.accolades,
+      grid: { board: props.board },
+      player: props.player
+    }),
+    [props.accolades, props.board, props.player]
+  );
   return (
     <div style={{ display: "flex" }}>
-      <div>
-        <Player position={props.player.position} />
-        <Grid size={DIMENSIONS} positions={props.positions} />
-      </div>
+      <RouteList sendRoute={setRoute} />
+      <MainContentRouter route={route} routerProps={routerProps} />
       <div>
         <Info player={props.player} />
       </div>

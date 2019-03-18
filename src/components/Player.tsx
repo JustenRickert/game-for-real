@@ -58,7 +58,9 @@ const usePlayerScrollIntoView = (
   }, [position]);
 };
 
-export const Player = (props: { position: { x: number; y: number } }) => {
+export type PlayerProps = { position: { x: number; y: number } };
+
+export const Player = (props: PlayerProps) => {
   const ref = useRef<HTMLDivElement>(null);
   useSingleResetToAllowRefSet();
   usePlayerScrollIntoView(ref, props.position);

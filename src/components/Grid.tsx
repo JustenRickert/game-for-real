@@ -4,13 +4,15 @@ import { range } from "lodash";
 import styles from "./grid.module.css";
 import { Root } from "../store";
 
-export const Grid = (props: {
+export type GridProps = {
   size: { width: number; height: number };
-  positions: Root["world"]["board"];
-}) => {
+  board: Root["world"]["board"];
+};
+
+export const Board = (props: GridProps) => {
   const {
     size: { width, height },
-    positions
+    board
   } = props;
   return (
     <div
@@ -19,7 +21,7 @@ export const Grid = (props: {
         gridTemplateColumns: `repeat(${width}, 1fr)`
       }}
     >
-      {positions.map((p, i) => {
+      {board.map((p, i) => {
         const { x, y } = p.position;
         return (
           <div key={i} className={styles.square}>
