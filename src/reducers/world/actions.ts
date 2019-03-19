@@ -1,11 +1,12 @@
 import { AnyAction } from "redux";
 import { ThunkAction } from "redux-thunk";
 import { isEqual, partial, sample } from "lodash";
+import invariant from "invariant";
 
 import { Root } from "../../store";
 import { checkAccolades } from "../accolades/actions";
 
-import { nextCityPrice, City } from "./city";
+import { nextCityPrice, City, stubCity } from "./city";
 import {
   movePlayerPositionAction,
   MovePlayerPositionAction,
@@ -19,10 +20,16 @@ import {
   AddBoardPoint,
   WorldState,
   UpdateBoardCity,
-  updateCity
+  updateCity,
+  updatePlayer,
+  UpdatePlayer,
+  UpdateEntity,
+  BoardSquare,
+  updateEntity
 } from "./world";
 
 import { move } from "./util";
+import { stubMinion } from "./minion";
 
 enum Thunks {
   MovePlayer = "WORLD/MOVE_PLAYER_THUNK"
@@ -36,23 +43,17 @@ export const addRandomPoint = (): WorldThunk<
   const {
     world: { board, player }
   } = getState();
-  const randomBoardPlace = sample(board)!;
-  const boardCities = board.filter(
-    b => b.placement && b.placement.type === "City"
-  );
-  const cityAtRandomBoardPlace = boardCities.find(b =>
-    isEqual(b.position, randomBoardPlace.position)
-  );
-  if (cityAtRandomBoardPlace)
+  const randomSquare = sample(board)!;
+  if (randomSquare.placement && randomSquare.placement.type === "City")
     dispatch(
-      updateCity(cityAtRandomBoardPlace.position, city => ({
+      updateCity(randomSquare, city => ({
         ...city,
         points: city.points + 1
       }))
     );
-  else if (isEqual(player.position, randomBoardPlace.position))
+  else if (isEqual(player.position, randomSquare.position))
     dispatch(addPlayerPointsAction(1));
-  else dispatch(addBoardPoint(randomBoardPlace.position));
+  else dispatch(addBoardPoint(randomSquare));
 
   // ACCOLADES TODO: Consider using middleware to do this. Should unrelated
   // reducers send actions to each other?
@@ -69,43 +70,62 @@ export const moveAction = (
   } = getState();
   const newPosition = move(direction, player.position);
   const boardAtNewPosition = board.find(b => isEqual(b.position, newPosition))!;
-  dispatch(movePlayerPositionAction(newPosition));
-  dispatch(addPlayerPointsAction(boardAtNewPosition.points));
-  dispatch(removeBoardPositionPoints(newPosition));
-
-  // ACCOLADES
-  dispatch(checkAccolades);
+  [
+    movePlayerPositionAction(newPosition),
+    addPlayerPointsAction(boardAtNewPosition.points),
+    removeBoardPositionPoints(boardAtNewPosition),
+    checkAccolades
+  ].forEach(dispatch);
 };
 
 export const purchaseCity = (
-  position: {
-    x: number;
-    y: number;
-  },
+  square: BoardSquare,
   onPurchase: (kind: "Taken" | "Success" | "Not enough points") => void
 ): WorldThunk<
-  PlaceBoardAction | UpdateBoardCity | RemoveBoardPositionPoints
+  PlaceBoardAction | UpdateBoardCity | UpdatePlayer | RemoveBoardPositionPoints
 > => (dispatch, getState) => {
   const {
     world: { board, player }
   } = getState();
-  const boardAtPosition = board.find(b => isEqual(b.position, position))!;
-  if (boardAtPosition.placement) {
+  if (square.placement) {
     onPurchase("Taken");
     return;
   }
   if (nextCityPrice(board) <= player.points) {
-    const points = board.find(b => isEqual(b.position, position))!.points;
-    dispatch(placeBoardAction(position));
-    dispatch(
-      updateCity(position, city => ({
-        ...city,
-        points: city.points + points
-      }))
-    );
-    dispatch(removeBoardPositionPoints(position));
+    const points = square.points;
+    [
+      placeBoardAction(square, () => ({ ...stubCity(), points: points })),
+      updatePlayer(player => ({
+        ...player,
+        points: player.points - nextCityPrice(board)
+      })),
+      removeBoardPositionPoints(square)
+    ].forEach(dispatch);
     onPurchase("Success");
     return;
   }
   onPurchase("Not enough points");
+};
+
+export const addEntity = (square: BoardSquare): WorldThunk<any> => (
+  dispatch,
+  getState
+) => {
+  invariant(!square.entity, "There is already something here");
+  [updateEntity(square, entity => stubMinion())].forEach(dispatch);
+};
+
+export const moveEntity = (
+  fromSquare: BoardSquare,
+  toSquare: BoardSquare
+): WorldThunk<UpdateEntity> => (dispatch, getState) => {
+  invariant(!toSquare.entity, "There is already something here");
+  const {
+    world: { board }
+  } = getState();
+  if (toSquare)
+    [
+      updateEntity(toSquare, minion => fromSquare.entity!),
+      updateEntity(fromSquare, minion => null)
+    ].forEach(dispatch);
 };

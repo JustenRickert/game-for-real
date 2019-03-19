@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import invariant from "invariant";
 
 import { Root } from "../store";
 import { BoardSquare } from "../reducers/world/world";
@@ -63,19 +64,17 @@ const usePurchase = (square: BoardSquare) => {
 };
 
 export type SquareInfoProps = {
-  square: BoardSquare | null;
+  square: BoardSquare;
   onClickCloseSquare: () => void;
   purchaseCity: typeof purchaseCity;
 };
 
 export const SquareInfo = (props: SquareInfoProps) => {
-  if (!props.square) {
-    console.error(
-      "props square should be non-null as it is the heuristic to show this component"
-    );
-    throw new Error("This shouldn't happen");
-  }
-  const { purchase, handlePurchaseCity } = usePurchase(props.square);
+  invariant(
+    props.square,
+    "props square should be non-null as it is the heuristic to show this component"
+  );
+  const { purchase, handlePurchaseCity } = usePurchase(props.square!);
   return (
     <>
       <h2
@@ -89,14 +88,14 @@ export const SquareInfo = (props: SquareInfoProps) => {
             }}
           >
             <span
-              children={["Square", position(props.square.position)].join(" ")}
+              children={["Square", position(props.square!.position)].join(" ")}
             />
             <span onClick={props.onClickCloseSquare} children="Close" />
           </p>
         }
       />
       <h3 children="Placement" />
-      <Placement {...props.square} />
+      <Placement {...props.square!} />
       <h3 children="Actions" />
       <p>
         {purchase === "Taken" ? (
@@ -108,7 +107,7 @@ export const SquareInfo = (props: SquareInfoProps) => {
         ) : !props.square!.placement ? (
           <button
             onClick={() =>
-              props.purchaseCity(props.square!.position, handlePurchaseCity)
+              props.purchaseCity(props.square!, handlePurchaseCity)
             }
             children="Buy City"
           />

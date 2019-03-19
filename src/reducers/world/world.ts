@@ -1,26 +1,26 @@
 import { combineReducers, Reducer } from "redux";
-import { isEqual, range } from "lodash";
+import { range } from "lodash";
 
 import { DIMENSIONS } from "../../config";
 
 import { move } from "./util";
 import { City, stubCity } from "./city";
+import { Minion } from "./minion";
+
+export type BoardSquare = {
+  position: { x: number; y: number };
+  placement: City | null;
+  entity: Minion | null;
+  points: number;
+};
 
 export type WorldState = {
   player: {
     points: number;
     position: { x: number; y: number };
   };
-  board: Board;
+  board: BoardSquare[];
 };
-
-export type BoardSquare = {
-  position: { x: number; y: number };
-  placement: City | null;
-  points: number;
-};
-
-type Board = BoardSquare[];
 
 export type WorldAction =
   | AddPlayerPointsAction
@@ -29,6 +29,7 @@ export type WorldAction =
 
 type BoardAction =
   | UpdatePlayer
+  | UpdateEntity
   | UpdateBoardCity
   | PlaceBoardAction
   | AddBoardPoint
@@ -41,7 +42,8 @@ enum Actions {
   RemoveBoardPoints = "World/Board/RemoveBoardPoints",
   UpdateBoardCity = "World/Board/UpdateCity",
   AddBoardPoint = "World/Board/AddPoint",
-  UpdatePlayer = "World/Player/Update"
+  UpdatePlayer = "World/Player/Update",
+  UpdateEntity = "World/Board/Entity/Update"
 }
 
 export type AddPlayerPointsAction = {
@@ -66,60 +68,6 @@ export const movePlayerPositionAction = (position: {
   y: number;
 }): MovePlayerPositionAction => ({
   type: Actions.MovePlayerPosition,
-  position
-});
-
-export type RemoveBoardPositionPoints = {
-  type: Actions.RemoveBoardPoints;
-  position: { x: number; y: number };
-};
-
-export const removeBoardPositionPoints = (position: {
-  x: number;
-  y: number;
-}): RemoveBoardPositionPoints => ({
-  type: Actions.RemoveBoardPoints,
-  position
-});
-
-export type AddBoardPoint = {
-  type: Actions.AddBoardPoint;
-  position: { x: number; y: number };
-};
-
-export const addBoardPoint = (position: {
-  x: number;
-  y: number;
-}): AddBoardPoint => ({
-  type: Actions.AddBoardPoint,
-  position
-});
-
-export type UpdateBoardCity = {
-  type: Actions.UpdateBoardCity;
-  position: { x: number; y: number };
-  update: (city: City) => City;
-};
-
-export const updateCity = (
-  position: { x: number; y: number },
-  update: (city: City) => City
-): UpdateBoardCity => ({
-  type: Actions.UpdateBoardCity,
-  position,
-  update
-});
-
-export type PlaceBoardAction = {
-  type: Actions.BoardPlace;
-  position: { x: number; y: number };
-};
-
-export const placeBoardAction = (position: {
-  x: number;
-  y: number;
-}): PlaceBoardAction => ({
-  type: Actions.BoardPlace,
   position
 });
 
@@ -159,13 +107,81 @@ const playerReducer: Reducer<WorldState["player"], WorldAction> = (
   return state;
 };
 
-export const boardReducer: Reducer<Board, BoardAction> = (
-  state = range(DIMENSIONS.height).reduce<Board>(
+export type RemoveBoardPositionPoints = {
+  type: Actions.RemoveBoardPoints;
+  square: BoardSquare;
+};
+
+export const removeBoardPositionPoints = (
+  square: BoardSquare
+): RemoveBoardPositionPoints => ({
+  type: Actions.RemoveBoardPoints,
+  square
+});
+
+export type AddBoardPoint = {
+  type: Actions.AddBoardPoint;
+  square: BoardSquare;
+};
+
+export const addBoardPoint = (square: BoardSquare): AddBoardPoint => ({
+  type: Actions.AddBoardPoint,
+  square
+});
+
+export type UpdateBoardCity = {
+  type: Actions.UpdateBoardCity;
+  square: BoardSquare;
+  update: (city: City) => City;
+};
+
+export const updateCity = (
+  square: BoardSquare,
+  update: (city: City) => City
+): UpdateBoardCity => ({
+  type: Actions.UpdateBoardCity,
+  square,
+  update
+});
+
+export type PlaceBoardAction = {
+  type: Actions.BoardPlace;
+  square: BoardSquare;
+  update: (placement: BoardSquare["placement"]) => BoardSquare["placement"];
+};
+
+export const placeBoardAction = (
+  square: BoardSquare,
+  update: (placement: BoardSquare["placement"]) => BoardSquare["placement"]
+): PlaceBoardAction => ({
+  type: Actions.BoardPlace,
+  square,
+  update
+});
+
+export type UpdateEntity = {
+  type: Actions.UpdateEntity;
+  square: BoardSquare;
+  update: (minion: Minion) => Minion | null;
+};
+
+export const updateEntity = (
+  square: BoardSquare,
+  update: (minion: Minion) => Minion | null
+): UpdateEntity => ({
+  type: Actions.UpdateEntity,
+  square,
+  update
+});
+
+export const boardReducer: Reducer<BoardSquare[], BoardAction> = (
+  state = range(DIMENSIONS.height).reduce<BoardSquare[]>(
     (board, y) =>
       board.concat(
         range(DIMENSIONS.width).map(x => ({
           position: { x, y },
           placement: null,
+          entity: null,
           points: 0
         }))
       ),
@@ -174,10 +190,16 @@ export const boardReducer: Reducer<Board, BoardAction> = (
   action
 ) => {
   switch (action.type) {
+    case Actions.UpdateEntity: {
+      return state.map(square =>
+        square === action.square
+          ? { ...square, entity: action.update(square.entity!) }
+          : square
+      );
+    }
     case Actions.UpdateBoardCity: {
-      console.log("should run this shit");
       return state.map(b => {
-        if (isEqual(b.position, action.position)) {
+        if (b === action.square) {
           if (!b.placement || b.placement.type !== "City") {
             throw new Error(`cant action ${action.type} on b.placement.type`);
           }
@@ -188,21 +210,17 @@ export const boardReducer: Reducer<Board, BoardAction> = (
     }
     case Actions.BoardPlace: {
       return state.map(b =>
-        isEqual(b.position, action.position)
-          ? { ...b, placement: stubCity() }
+        b === action.square
+          ? { ...b, placement: action.update(b.placement) }
           : b
       );
     }
     case Actions.RemoveBoardPoints: {
-      return state.map(b =>
-        isEqual(b.position, action.position) ? { ...b, points: 0 } : b
-      );
+      return state.map(b => (b === action.square ? { ...b, points: 0 } : b));
     }
     case Actions.AddBoardPoint: {
       return state.map(b =>
-        isEqual(b.position, action.position)
-          ? { ...b, points: b.points + 1 }
-          : b
+        b === action.square ? { ...b, points: b.points + 1 } : b
       );
     }
   }

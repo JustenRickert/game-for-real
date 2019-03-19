@@ -10,21 +10,21 @@ import { range } from "lodash";
 
 import styles from "./grid.module.css";
 import { Root } from "../store";
+import { BoardSquare } from "../reducers/world/world";
 
 export type GridProps = {
   size: { width: number; height: number };
   board: Root["world"]["board"];
 
-  onClickSquare: (position: { x: number; y: number }) => void;
+  onClickSquare: (square: BoardSquare) => void;
 };
 
 export const Board = (props: GridProps) => {
   const [selection, setSelection] = useState(-1);
-  const handleClickSquare = (position: { x: number; y: number }, i: number) => {
+  const handleClickSquare = (square: BoardSquare, i: number) => {
     setSelection(i);
-    props.onClickSquare(position);
+    props.onClickSquare(square);
   };
-  console.log(props.board);
   return (
     <div
       className={styles.grid}
@@ -32,23 +32,22 @@ export const Board = (props: GridProps) => {
         gridTemplateColumns: `repeat(${props.size.width}, 1fr)`
       }}
     >
-      {props.board.map((b, i) => {
-        const { x, y } = b.position;
+      {props.board.map((square, i) => {
         return (
           <div
             key={i}
-            onClick={() => handleClickSquare(b.position, i)}
+            onClick={() => handleClickSquare(square, i)}
             className={styles.square}
             style={{
-              backgroundColor: selection === i ? "green" : undefined
+              backgroundColor: selection === i ? "lightgreen" : undefined
             }}
           >
-            <div children={b.placement ? b.placement.type : ""} />
+            <div children={square.placement ? square.placement.type : ""} />
             <div
               children={
-                b.placement && b.placement.type === "City"
-                  ? `${b.placement.points} CP`
-                  : b.points
+                square.placement && square.placement.type === "City"
+                  ? `${square.placement.points} CP`
+                  : square.points
               }
             />
           </div>

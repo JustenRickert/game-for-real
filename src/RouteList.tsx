@@ -11,6 +11,7 @@ import {
 } from "./components/Info";
 import { Board, GridProps } from "./components/Grid";
 import { Store, StoreProps } from "./components/Store";
+import { BoardSquare } from "./reducers/world/world";
 
 const keys = <T extends {}>(t: T) => {
   return Object.keys(t) as (keyof T)[];
@@ -19,7 +20,7 @@ const keys = <T extends {}>(t: T) => {
 type GridPlayerProps = {
   board: GridProps["board"];
   player: PlayerProps;
-  onClickSquare: (position: { x: number; y: number }) => void;
+  onClickSquare: (square: BoardSquare) => void;
 };
 
 const GridPlayer = (props: GridPlayerProps) => {

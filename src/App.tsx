@@ -18,7 +18,7 @@ import {
   addRandomPoint,
   purchaseCity
 } from "./reducers/world/actions";
-import { essenceAction, BoardSquare } from "./reducers/world/world";
+import { BoardSquare } from "./reducers/world/world";
 import { Root, store } from "./store";
 import {
   RouteList,
@@ -107,15 +107,14 @@ const useRouters = (props: {
       accolades: props.accolades,
       board: props.board,
       player: props.player,
-      onClickSquare: (position: { x: number; y: number }) =>
-        handleClickSquare(props.board.find(b => isEqual(b.position, position))!)
+      onClickSquare: handleClickSquare
     }),
     [props.accolades, props.board, props.player]
   );
   const secondaryRouterProps = useMemo(
     () => ({
       player: props.player,
-      square: lastSquare,
+      square: lastSquare!,
       onClickCloseSquare: handleClickCloseSquare,
       purchaseCity: props.purchaseCity
     }),
@@ -138,7 +137,6 @@ type Props = {
   accolades: Root["accolades"];
   board: Root["world"]["board"];
   player: Root["world"]["player"];
-  positions: Root["world"]["positions"];
   move: typeof moveAction;
   randomPoint: typeof addRandomPoint;
   purchaseCity: typeof purchaseCity;
