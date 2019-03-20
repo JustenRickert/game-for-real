@@ -1,22 +1,16 @@
-import React, {
-  useRef,
-  useState,
-  useEffect,
-  useReducer,
-  Reducer,
-  useMemo
-} from "react";
+import React, { useRef, useState, useEffect, useReducer, Reducer } from "react";
 import { connect } from "react-redux";
-import { sample, isEqual, isNull } from "lodash";
+import { sample, range, isEqual, isNull } from "lodash";
 
-import { Info } from "./components/Info";
+import { Info, SquareInfoProps, InfoProps } from "./components/Info";
 import { Board } from "./components/Grid";
 import { Player } from "./components/Player";
 import { MOVE_KEYS, DIMENSIONS } from "./config";
 import {
   moveAction,
   addRandomPoint,
-  purchaseCity
+  purchaseCity,
+  addEntityAction
 } from "./reducers/world/actions";
 import { BoardSquare } from "./reducers/world/world";
 import { Root, store } from "./store";
@@ -31,7 +25,7 @@ type ArrowKey = "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";
 const randomTime = (atLeast: number, upperBound: number) =>
   atLeast + Math.random() * (upperBound - atLeast);
 
-const randomPointsTime = () => randomTime(1000, 10000);
+const randomPointsTime = () => randomTime(100, 1000);
 const useAddRandomPointsToBoard = (randomPoint: typeof addRandomPoint) => {
   let timeout: number;
 
@@ -64,23 +58,24 @@ const usePlayerMovement = (move: typeof moveAction) => {
   }, []);
 };
 
-const useSecondaryRoute = () => {
+const useSecondaryRoute = (board: BoardSquare[]) => {
   const [routeSecondary, dispatch] = useReducer<
     Reducer<
       {
         route: "PlayerInfo" | "SquareInfo";
-        lastSquare: null | BoardSquare;
+        selectedSquareIndex: null | number;
       },
-      BoardSquare | "PlayerInfo"
+      number | "PlayerInfo"
     >
   >(
     (state, action) => {
       if (typeof action === "string") return { ...state, route: "PlayerInfo" };
-      return { route: "SquareInfo", lastSquare: action };
+      return { route: "SquareInfo", selectedSquareIndex: action };
     },
-    { route: "PlayerInfo", lastSquare: null }
+    { route: "PlayerInfo", selectedSquareIndex: null }
   );
-  const handleClickSquare = (square: BoardSquare) => dispatch(square);
+  const handleClickSquare = (square: BoardSquare) =>
+    dispatch(board.findIndex(b => b === square));
   const handleClickCloseSquare = () => dispatch("PlayerInfo");
   return {
     ...routeSecondary,
@@ -94,32 +89,24 @@ const useRouters = (props: {
   board: Root["world"]["board"];
   player: Root["world"]["player"];
   purchaseCity: typeof purchaseCity;
+  addEntity: typeof addEntityAction;
 }) => {
   const [routeMain, setMainRoute] = useState<"Grid" | "Store">("Grid");
   const {
     route: routeSecondary,
-    lastSquare,
+    selectedSquareIndex,
     handleClickSquare,
     handleClickCloseSquare
-  } = useSecondaryRoute();
-  const mainRouterProps = useMemo(
-    () => ({
-      accolades: props.accolades,
-      board: props.board,
-      player: props.player,
-      onClickSquare: handleClickSquare
-    }),
-    [props.accolades, props.board, props.player]
-  );
-  const secondaryRouterProps = useMemo(
-    () => ({
-      player: props.player,
-      square: lastSquare!,
-      onClickCloseSquare: handleClickCloseSquare,
-      purchaseCity: props.purchaseCity
-    }),
-    [props.board, props.player, lastSquare]
-  );
+  } = useSecondaryRoute(props.board);
+  const mainRouterProps = {
+    ...props,
+    onClickSquare: handleClickSquare
+  };
+  const secondaryRouterProps: SquareInfoProps & InfoProps = {
+    ...props,
+    selectedSquareIndex: selectedSquareIndex!,
+    onClickCloseSquare: handleClickCloseSquare
+  };
   return {
     route: {
       main: routeMain,
@@ -133,6 +120,58 @@ const useRouters = (props: {
   };
 };
 
+const randomMinionMovementTime = () => randomTime(2500, 3500);
+const randomMinionSpawnTime = () => randomTime(2500, 5000);
+const useEntityMovement = (
+  board: BoardSquare[],
+  addEntity: typeof addEntityAction
+) => {
+  // const spawnTimeoutRefs = useRef<(null | number)[]>(
+  //   board.map(b => (b.entity ? randomMinionMovementTime() : null))
+  // );
+  // const handleRandomSpawn = (i: number) => {
+  //   const newTimeout = randomMinionMovementTime();
+  //   spawnTimeoutRefs.current[i] = newTimeout;
+  //   setTimeout(handleRandomSpawn, newTimeout);
+  //   console.log("Wow! A spawn!");
+  // };
+  // useEffect(() => {
+  //   console.log("SPAWN USE RUN");
+  //   spawnTimeoutRefs.current.forEach((timeout, i) => {
+  //     if (timeout !== null) {
+  //       setTimeout(handleRandomSpawn, timeout);
+  //       console.log("timeout set", board[i]);
+  //     }
+  //   });
+  // }, board.map(square => square.placement));
+
+  const movementTimeoutRefs = useRef<(null | number)[]>(
+    board.map(b => (b.entity ? randomMinionMovementTime() : null))
+  );
+  const resetMovementTimeoutRefs = () => {
+    movementTimeoutRefs.current = board.map((b, i) =>
+      b.entity
+        ? movementTimeoutRefs.current[i] || randomMinionMovementTime()
+        : null
+    );
+  };
+  const handleRandomMovement = (i: number) => {
+    const newTimeout = randomMinionMovementTime();
+    movementTimeoutRefs.current[i] = newTimeout;
+    setTimeout(handleRandomMovement, newTimeout);
+    console.log(movementTimeoutRefs.current!.filter(Boolean));
+    console.log("Wow!");
+  };
+  useEffect(() => {
+    resetMovementTimeoutRefs();
+    movementTimeoutRefs.current.forEach((timeout, i) => {
+      if (timeout !== null) {
+        setTimeout(handleRandomMovement, timeout);
+      }
+    });
+  }, board.map(square => square.entity));
+};
+
 type Props = {
   accolades: Root["accolades"];
   board: Root["world"]["board"];
@@ -140,6 +179,7 @@ type Props = {
   move: typeof moveAction;
   randomPoint: typeof addRandomPoint;
   purchaseCity: typeof purchaseCity;
+  addEntity: typeof addEntityAction;
 };
 
 export const App = connect(
@@ -151,11 +191,13 @@ export const App = connect(
   {
     move: moveAction,
     randomPoint: addRandomPoint,
-    purchaseCity
+    purchaseCity,
+    addEntity: addEntityAction
   }
 )((props: Props) => {
   usePlayerMovement(props.move);
   useAddRandomPointsToBoard(props.randomPoint);
+  useEntityMovement(props.board, props.addEntity);
   const { setMainRoute, route, routerProps } = useRouters(props);
   return (
     <div style={{ display: "flex" }}>

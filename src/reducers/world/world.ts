@@ -1,5 +1,5 @@
 import { combineReducers, Reducer } from "redux";
-import { range } from "lodash";
+import { range, isEqual } from "lodash";
 
 import { DIMENSIONS } from "../../config";
 
@@ -31,6 +31,7 @@ type BoardAction =
   | UpdatePlayer
   | UpdateEntity
   | UpdateBoardCity
+  | UpdateSquare
   | PlaceBoardAction
   | AddBoardPoint
   | RemoveBoardPositionPoints;
@@ -43,7 +44,8 @@ enum Actions {
   UpdateBoardCity = "World/Board/UpdateCity",
   AddBoardPoint = "World/Board/AddPoint",
   UpdatePlayer = "World/Player/Update",
-  UpdateEntity = "World/Board/Entity/Update"
+  UpdateEntity = "World/Board/Entity/Update",
+  UpdateSquare = "World/Board/Square/Update"
 }
 
 export type AddPlayerPointsAction = {
@@ -174,6 +176,21 @@ export const updateEntity = (
   update
 });
 
+export type UpdateSquare = {
+  type: Actions.UpdateSquare;
+  square: BoardSquare;
+  update: (square: BoardSquare) => BoardSquare;
+};
+
+export const updateSquare = (
+  square: BoardSquare,
+  update: (square: BoardSquare) => BoardSquare
+): UpdateSquare => ({
+  type: Actions.UpdateSquare,
+  square,
+  update
+});
+
 export const boardReducer: Reducer<BoardSquare[], BoardAction> = (
   state = range(DIMENSIONS.height).reduce<BoardSquare[]>(
     (board, y) =>
@@ -190,6 +207,11 @@ export const boardReducer: Reducer<BoardSquare[], BoardAction> = (
   action
 ) => {
   switch (action.type) {
+    case Actions.UpdateSquare: {
+      return state.map(square =>
+        square === action.square ? action.update(square) : square
+      );
+    }
     case Actions.UpdateEntity: {
       return state.map(square =>
         square === action.square

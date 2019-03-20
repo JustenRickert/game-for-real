@@ -43,6 +43,7 @@ export const Board = (props: GridProps) => {
             }}
           >
             <div children={square.placement ? square.placement.type : ""} />
+            <div children={square.entity ? "M" : ""} />
             <div
               children={
                 square.placement && square.placement.type === "City"

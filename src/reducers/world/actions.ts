@@ -25,11 +25,12 @@ import {
   UpdatePlayer,
   UpdateEntity,
   BoardSquare,
-  updateEntity
+  updateEntity,
+  updateSquare
 } from "./world";
 
 import { move } from "./util";
-import { stubMinion } from "./minion";
+import { stubMinion, nextMinionPrice } from "./minion";
 
 enum Thunks {
   MovePlayer = "WORLD/MOVE_PLAYER_THUNK"
@@ -107,12 +108,36 @@ export const purchaseCity = (
   onPurchase("Not enough points");
 };
 
-export const addEntity = (square: BoardSquare): WorldThunk<any> => (
-  dispatch,
-  getState
-) => {
-  invariant(!square.entity, "There is already something here");
-  [updateEntity(square, entity => stubMinion())].forEach(dispatch);
+export const addEntityAction = (
+  square: BoardSquare,
+  onPurchase: (kind: "Not enough points" | "Success") => void
+): WorldThunk<any> => (dispatch, getState) => {
+  invariant(
+    !square.entity,
+    "UI enforces no adding entities where they already exist"
+  );
+  invariant(
+    square.placement,
+    "UI enforces only adding entities where there is a placement"
+  );
+  const {
+    world: { player, board }
+  } = getState();
+  const pointsCost = nextMinionPrice(board);
+  if (pointsCost <= square.placement!.points) {
+    [
+      updateSquare(square, square => ({
+        ...square,
+        entity: stubMinion(),
+        placement: {
+          ...square.placement!,
+          points: square.placement!.points - pointsCost
+        }
+      }))
+    ].forEach(dispatch);
+    onPurchase("Success");
+  }
+  onPurchase("Not enough points");
 };
 
 export const moveEntity = (

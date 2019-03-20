@@ -5,7 +5,6 @@ import { BoardSquare } from "./world";
 export type Minion = {
   type: "Minion";
   name: string;
-  cost: number;
 };
 
 const randomName = () => {
@@ -15,10 +14,9 @@ const randomName = () => {
 
 export const stubMinion = (): Minion => ({
   type: "Minion",
-  name: randomName(),
-  cost: 1
+  name: randomName()
 });
 
-export const nextCityPrice = (board: BoardSquare[]) => {
-  return board.map(b => b.placement).filter(Boolean).length + 1;
+export const nextMinionPrice = (board: BoardSquare[]) => {
+  return board.map(b => b.entity).filter(Boolean).length + 1;
 };

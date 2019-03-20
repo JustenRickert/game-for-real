@@ -3,7 +3,9 @@ import invariant from "invariant";
 
 import { Root } from "../store";
 import { BoardSquare } from "../reducers/world/world";
-import { purchaseCity } from "../reducers/world/actions";
+import { purchaseCity, addEntityAction } from "../reducers/world/actions";
+import { nextCityPrice } from "../reducers/world/city";
+import { nextMinionPrice } from "../reducers/world/minion";
 
 export type InfoProps = { player: Root["world"]["player"] };
 
@@ -25,56 +27,56 @@ export const Info = (props: InfoProps) => {
 
 const position = ({ x, y }: { x: number; y: number }) => [x, y].join(",");
 
-export const Placement = (props: BoardSquare) => {
-  if (!props.placement) {
-    return <p children="Nothing here" />;
-  }
-  return (
-    <p
-      children={[
-        "Square at",
-        position(props.position),
-        "with",
-        props.points,
-        props.points === 1 ? "points" : "point"
-      ].join(" ")}
-    />
-  );
-};
-
 const usePurchase = (square: BoardSquare) => {
-  const [purchase, setPurchase] = useState<
+  const [recentCityPurchaseMessage, setRecentCityPurchaseMessage] = useState<
     null | "Taken" | "Success" | "Not enough points"
   >(null);
+  const [
+    recentEntityPurchaseMessage,
+    setRecentEntityPurchaseMessage
+  ] = useState<null | "Success" | "Not enough points">(null);
   useEffect(() => {
-    setPurchase(null);
+    setRecentCityPurchaseMessage(null);
+    setRecentEntityPurchaseMessage(null);
   }, [square]);
   const handlePurchaseCity = (
     kind: "Taken" | "Success" | "Not enough points"
   ) => {
-    setPurchase(kind);
+    setRecentCityPurchaseMessage(kind);
     setTimeout(() => {
-      setPurchase(null);
+      setRecentCityPurchaseMessage(null);
+    }, 2500);
+  };
+  const handlePurchaseEntity = (kind: "Success" | "Not enough points") => {
+    setRecentEntityPurchaseMessage(kind);
+    setTimeout(() => {
+      setRecentEntityPurchaseMessage(null);
     }, 2500);
   };
   return {
-    purchase,
-    handlePurchaseCity
+    recentCityPurchaseMessage,
+    recentEntityPurchaseMessage,
+    handlePurchaseCity,
+    handlePurchaseEntity
   };
 };
 
 export type SquareInfoProps = {
-  square: BoardSquare;
+  board: BoardSquare[];
+  selectedSquareIndex: number;
   onClickCloseSquare: () => void;
   purchaseCity: typeof purchaseCity;
+  addEntity: typeof addEntityAction;
 };
 
 export const SquareInfo = (props: SquareInfoProps) => {
-  invariant(
-    props.square,
-    "props square should be non-null as it is the heuristic to show this component"
-  );
-  const { purchase, handlePurchaseCity } = usePurchase(props.square!);
+  const square = props.board[props.selectedSquareIndex];
+  const {
+    recentCityPurchaseMessage,
+    recentEntityPurchaseMessage,
+    handlePurchaseCity,
+    handlePurchaseEntity
+  } = usePurchase(square);
   return (
     <>
       <h2
@@ -87,34 +89,77 @@ export const SquareInfo = (props: SquareInfoProps) => {
               alignContent: "space-between"
             }}
           >
-            <span
-              children={["Square", position(props.square!.position)].join(" ")}
-            />
+            <span children={["Square", position(square.position)].join(" ")} />
             <span onClick={props.onClickCloseSquare} children="Close" />
           </p>
         }
       />
+
       <h3 children="Placement" />
-      <Placement {...props.square!} />
+      {!square.placement ? (
+        <p children="Nothing here" />
+      ) : (
+        <>
+          <p
+            children={[
+              "Square at",
+              position(square.position),
+              "with",
+              square.points,
+              square.points === 1 ? "points" : "point"
+            ].join(" ")}
+          />
+          {square.entity ? (
+            <p
+              children={`There's a ${square.entity.type.toLowerCase()} here`}
+            />
+          ) : (
+            <p children={`A can be TODO`} />
+          )}
+        </>
+      )}
+
       <h3 children="Actions" />
       <p>
-        {purchase === "Taken" ? (
+        {recentCityPurchaseMessage === "Taken" ? (
           <span children="That board position is taken" />
-        ) : purchase === "Success" ? (
+        ) : recentCityPurchaseMessage === "Success" ? (
           <span children="Bought" />
-        ) : purchase === "Not enough points" ? (
+        ) : recentCityPurchaseMessage === "Not enough points" ? (
           "Get some more points"
-        ) : !props.square!.placement ? (
+        ) : !square.placement ? (
           <button
-            onClick={() =>
-              props.purchaseCity(props.square!, handlePurchaseCity)
-            }
-            children="Buy City"
+            onClick={() => props.purchaseCity(square, handlePurchaseCity)}
+            children={[
+              "Buy City for",
+              nextCityPrice(props.board),
+              nextCityPrice(props.board) === 1 ? "point" : "points"
+            ].join(" ")}
           />
         ) : (
           "No actions"
         )}
       </p>
+      {square.placement && !square.entity ? (
+        <p>
+          {recentEntityPurchaseMessage === "Not enough points" ? (
+            <span children="Not enough points" />
+          ) : recentEntityPurchaseMessage === "Success" ? (
+            <span children="Bought" />
+          ) : (
+            <button
+              onClick={() => {
+                props.addEntity(square, handlePurchaseEntity);
+              }}
+              children={[
+                "Buy Minion for",
+                nextMinionPrice(props.board),
+                nextMinionPrice(props.board) === 1 ? "point" : "points"
+              ].join(" ")}
+            />
+          )}
+        </p>
+      ) : null}
     </>
   );
 };
