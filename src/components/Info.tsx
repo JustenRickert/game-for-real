@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { isEqual } from "lodash";
 import invariant from "invariant";
 
 import { Root } from "../store";
-import { BoardSquare } from "../reducers/world/world";
+import { BoardSquare, Entity } from "../reducers/world/world";
 import { purchaseCity, addEntityAction } from "../reducers/world/actions";
 import { nextCityPrice } from "../reducers/world/city";
 import { nextMinionPrice } from "../reducers/world/minion";
@@ -34,7 +35,7 @@ const usePurchase = (square: BoardSquare) => {
   const [
     recentEntityPurchaseMessage,
     setRecentEntityPurchaseMessage
-  ] = useState<null | "Success" | "Not enough points">(null);
+  ] = useState<null | "Success" | "Not enough points" | "Position taken">(null);
   useEffect(() => {
     setRecentCityPurchaseMessage(null);
     setRecentEntityPurchaseMessage(null);
@@ -47,7 +48,9 @@ const usePurchase = (square: BoardSquare) => {
       setRecentCityPurchaseMessage(null);
     }, 2500);
   };
-  const handlePurchaseEntity = (kind: "Success" | "Not enough points") => {
+  const handlePurchaseEntity = (
+    kind: "Success" | "Not enough points" | "Position taken"
+  ) => {
     setRecentEntityPurchaseMessage(kind);
     setTimeout(() => {
       setRecentEntityPurchaseMessage(null);
@@ -63,6 +66,7 @@ const usePurchase = (square: BoardSquare) => {
 
 export type SquareInfoProps = {
   board: BoardSquare[];
+  entities: Record<string, Entity>;
   selectedSquareIndex: number;
   onClickCloseSquare: () => void;
   purchaseCity: typeof purchaseCity;
@@ -77,6 +81,9 @@ export const SquareInfo = (props: SquareInfoProps) => {
     handlePurchaseCity,
     handlePurchaseEntity
   } = usePurchase(square);
+  const entity = Object.values(props.entities).find(entity =>
+    isEqual(entity.position, square.position)
+  );
   return (
     <>
       <h2
@@ -109,38 +116,36 @@ export const SquareInfo = (props: SquareInfoProps) => {
               square.points === 1 ? "points" : "point"
             ].join(" ")}
           />
-          {square.entity ? (
-            <p
-              children={`There's a ${square.entity.type.toLowerCase()} here`}
-            />
+          {entity ? (
+            <p children={`There's a ${entity.type.toLowerCase()} here`} />
           ) : (
-            <p children={`A can be TODO`} />
+            <p children="No entity" />
           )}
         </>
       )}
 
       <h3 children="Actions" />
-      <p>
-        {recentCityPurchaseMessage === "Taken" ? (
-          <span children="That board position is taken" />
-        ) : recentCityPurchaseMessage === "Success" ? (
-          <span children="Bought" />
-        ) : recentCityPurchaseMessage === "Not enough points" ? (
-          "Get some more points"
-        ) : !square.placement ? (
-          <button
-            onClick={() => props.purchaseCity(square, handlePurchaseCity)}
-            children={[
-              "Buy City for",
-              nextCityPrice(props.board),
-              nextCityPrice(props.board) === 1 ? "point" : "points"
-            ].join(" ")}
-          />
-        ) : (
-          "No actions"
-        )}
-      </p>
-      {square.placement && !square.entity ? (
+      {!square.placement && (
+        <p>
+          {recentCityPurchaseMessage === "Taken" ? (
+            <span children="That board position is taken" />
+          ) : recentCityPurchaseMessage === "Success" ? (
+            <span children="Bought" />
+          ) : recentCityPurchaseMessage === "Not enough points" ? (
+            "Get some more points"
+          ) : (
+            <button
+              onClick={() => props.purchaseCity(square, handlePurchaseCity)}
+              children={[
+                "Buy City for",
+                nextCityPrice(props.board),
+                nextCityPrice(props.board) === 1 ? "point" : "points"
+              ].join(" ")}
+            />
+          )}
+        </p>
+      )}
+      {square.placement && !entity ? (
         <p>
           {recentEntityPurchaseMessage === "Not enough points" ? (
             <span children="Not enough points" />
@@ -162,4 +167,10 @@ export const SquareInfo = (props: SquareInfoProps) => {
       ) : null}
     </>
   );
+};
+
+export type EntityInfoProps = {};
+
+export const EntityInfo = (props: {}) => {
+  return <div children="todo" />;
 };

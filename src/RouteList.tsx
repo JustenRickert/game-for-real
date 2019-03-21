@@ -6,19 +6,21 @@ import { Player, PlayerProps } from "./components/Player";
 import {
   Info,
   InfoProps,
+  EntityInfo,
+  EntityInfoProps,
   SquareInfo,
   SquareInfoProps
 } from "./components/Info";
 import { Board, GridProps } from "./components/Grid";
 import { Store, StoreProps } from "./components/Store";
 import { BoardSquare } from "./reducers/world/world";
+import { Root } from "./store";
 
-const keys = <T extends {}>(t: T) => {
-  return Object.keys(t) as (keyof T)[];
-};
+const keys = <T extends {}>(t: T) => Object.keys(t) as (keyof T)[];
 
 type GridPlayerProps = {
   board: GridProps["board"];
+  entities: Root["world"]["entities"];
   player: PlayerProps;
   onClickSquare: (square: BoardSquare) => void;
 };
@@ -32,6 +34,7 @@ const GridPlayer = (props: GridPlayerProps) => {
         onClickSquare={props.onClickSquare}
         size={DIMENSIONS}
         board={props.board}
+        entities={props.entities}
       />
     </div>
   );
@@ -62,13 +65,14 @@ export const MainContentRouter = (props: {
 };
 
 const secondaryRoutes = {
+  EntityInfo: EntityInfo,
   PlayerInfo: Info,
   SquareInfo: SquareInfo
 };
 
 export const SecondaryContentRouter = (props: {
-  route: "PlayerInfo" | "SquareInfo";
-  routerProps: InfoProps & SquareInfoProps;
+  route: "PlayerInfo" | "SquareInfo" | "EntityInfo";
+  routerProps: InfoProps & SquareInfoProps & EntityInfoProps;
 }) => {
   return <div>{secondaryRoutes[props.route](props.routerProps)}</div>;
 };

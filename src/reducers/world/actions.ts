@@ -8,6 +8,7 @@ import { checkAccolades } from "../accolades/actions";
 
 import { nextCityPrice, City, stubCity } from "./city";
 import {
+  Entity,
   movePlayerPositionAction,
   MovePlayerPositionAction,
   removeBoardPositionPoints,
@@ -26,7 +27,9 @@ import {
   UpdateEntity,
   BoardSquare,
   updateEntity,
-  updateSquare
+  updateSquare,
+  updateBoard,
+  UpdateBoard
 } from "./world";
 
 import { move } from "./util";
@@ -61,6 +64,52 @@ export const addRandomPoint = (): WorldThunk<
   dispatch(checkAccolades);
 };
 
+export const moveEntityAction = (
+  entity: Entity,
+  square: BoardSquare | undefined,
+  sendMovementStatus: (kind: "No moves" | "Moved" | "Position occupied") => void
+): WorldThunk<any> => (dispatch, getState) => {
+  const {
+    world: { board, entities }
+  } = getState();
+  if (!square) {
+    sendMovementStatus("No moves");
+    return;
+  }
+  if (Object.values(entities).some(e => isEqual(e.position, square.position))) {
+    sendMovementStatus("Position occupied");
+    return;
+  }
+  sendMovementStatus("Moved");
+  const points = Math.min(entity.maxPoints - entity.points, square.points);
+  if (points < 0) {
+    console.log({
+      points,
+      entity: { max: entity.maxPoints, points: entity.points },
+      square: square.points
+    });
+  }
+  dispatch(
+    updateEntity(entity.key, e => ({
+      ...e,
+      position: square.position,
+      points: e.points + points
+    }))
+  );
+  dispatch(
+    updateBoard(squares =>
+      squares.map(s =>
+        isEqual(s.position, square.position)
+          ? {
+              ...square,
+              points: s.points - points
+            }
+          : s
+      )
+    )
+  );
+};
+
 export const moveAction = (
   direction: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown"
 ): WorldThunk<
@@ -70,11 +119,23 @@ export const moveAction = (
     world: { board, player }
   } = getState();
   const newPosition = move(direction, player.position);
-  const boardAtNewPosition = board.find(b => isEqual(b.position, newPosition))!;
+  const newSquare = board.find(b => isEqual(b.position, newPosition))!;
   [
-    movePlayerPositionAction(newPosition),
-    addPlayerPointsAction(boardAtNewPosition.points),
-    removeBoardPositionPoints(boardAtNewPosition),
+    updatePlayer(() => ({
+      ...player,
+      points: player.points + newSquare.points,
+      position: newPosition
+    })),
+    updateBoard(() =>
+      board.map(square =>
+        square === newSquare
+          ? {
+              ...square,
+              points: 0
+            }
+          : square
+      )
+    ),
     checkAccolades
   ].forEach(dispatch);
 };
@@ -110,25 +171,23 @@ export const purchaseCity = (
 
 export const addEntityAction = (
   square: BoardSquare,
-  onPurchase: (kind: "Not enough points" | "Success") => void
+  onPurchase: (kind: "Not enough points" | "Success" | "Position taken") => void
 ): WorldThunk<any> => (dispatch, getState) => {
-  invariant(
-    !square.entity,
-    "UI enforces no adding entities where they already exist"
-  );
   invariant(
     square.placement,
     "UI enforces only adding entities where there is a placement"
   );
+  square;
   const {
     world: { player, board }
   } = getState();
   const pointsCost = nextMinionPrice(board);
   if (pointsCost <= square.placement!.points) {
+    const minion = stubMinion(square.position);
     [
+      updateEntity(minion.key, minion),
       updateSquare(square, square => ({
         ...square,
-        entity: stubMinion(),
         placement: {
           ...square.placement!,
           points: square.placement!.points - pointsCost
@@ -136,21 +195,7 @@ export const addEntityAction = (
       }))
     ].forEach(dispatch);
     onPurchase("Success");
+    return;
   }
   onPurchase("Not enough points");
-};
-
-export const moveEntity = (
-  fromSquare: BoardSquare,
-  toSquare: BoardSquare
-): WorldThunk<UpdateEntity> => (dispatch, getState) => {
-  invariant(!toSquare.entity, "There is already something here");
-  const {
-    world: { board }
-  } = getState();
-  if (toSquare)
-    [
-      updateEntity(toSquare, minion => fromSquare.entity!),
-      updateEntity(fromSquare, minion => null)
-    ].forEach(dispatch);
 };

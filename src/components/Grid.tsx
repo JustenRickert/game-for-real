@@ -6,7 +6,7 @@ import React, {
   useEffect,
   useLayoutEffect
 } from "react";
-import { range } from "lodash";
+import { isEqual, range } from "lodash";
 
 import styles from "./grid.module.css";
 import { Root } from "../store";
@@ -15,11 +15,15 @@ import { BoardSquare } from "../reducers/world/world";
 export type GridProps = {
   size: { width: number; height: number };
   board: Root["world"]["board"];
+  entities: Root["world"]["entities"];
 
   onClickSquare: (square: BoardSquare) => void;
 };
 
 export const Board = (props: GridProps) => {
+  const [selectionType, setSelectionType] = useState<"entity" | "placement">(
+    "entity"
+  );
   const [selection, setSelection] = useState(-1);
   const handleClickSquare = (square: BoardSquare, i: number) => {
     setSelection(i);
@@ -33,6 +37,9 @@ export const Board = (props: GridProps) => {
       }}
     >
       {props.board.map((square, i) => {
+        const entity = Object.values(props.entities).find(entity =>
+          isEqual(square.position, entity.position)
+        );
         return (
           <div
             key={i}
@@ -43,7 +50,11 @@ export const Board = (props: GridProps) => {
             }}
           >
             <div children={square.placement ? square.placement.type : ""} />
-            <div children={square.entity ? "M" : ""} />
+            <div
+              children={
+                entity ? "M" + (entity.points ? `(${entity.points})` : "") : ""
+              }
+            />
             <div
               children={
                 square.placement && square.placement.type === "City"

@@ -1,10 +1,14 @@
-import { sample } from "lodash";
+import { sample, uniqueId } from "lodash";
 
 import { BoardSquare } from "./world";
 
 export type Minion = {
   type: "Minion";
+  key: string;
   name: string;
+  position: { x: number; y: number };
+  maxPoints: number;
+  points: number;
 };
 
 const randomName = () => {
@@ -12,11 +16,15 @@ const randomName = () => {
   return sample(names)!;
 };
 
-export const stubMinion = (): Minion => ({
+export const stubMinion = (position: { x: number; y: number }): Minion => ({
   type: "Minion",
-  name: randomName()
+  key: uniqueId("minion-"),
+  name: randomName(),
+  position,
+  maxPoints: 10,
+  points: 0
 });
 
 export const nextMinionPrice = (board: BoardSquare[]) => {
-  return board.map(b => b.entity).filter(Boolean).length + 1;
+  return 1;
 };
