@@ -17,7 +17,8 @@ import {
   addRandomPoint,
   purchaseCity,
   addEntityAction,
-  moveEntityAction
+  moveEntityAction,
+  runMinionMovement
 } from "./reducers/world/actions";
 import { BoardSquare, Entity } from "./reducers/world/world";
 import { Root, store } from "./store";
@@ -152,34 +153,6 @@ const useRouters = (props: {
   };
 };
 
-const DIRECTIONS = {
-  Left: { x: -1, y: 0 },
-  Up: { x: 0, y: -1 },
-  UpLeft: { x: -1, y: -1 },
-  Right: { x: 1, y: 0 },
-  UpRight: { x: 1, y: -1 },
-  DownRight: { x: 1, y: 1 },
-  Down: { x: 0, y: 1 },
-  DownLeft: { x: -1, y: 1 }
-};
-
-const getMovements = (
-  props: { entities: Record<string, Entity>; board: BoardSquare[] },
-  entity: Entity
-) => {
-  const entities = Object.values(props.entities);
-  return Object.values(DIRECTIONS)
-    .map(direction => ({
-      x: direction.x + entity.position.x,
-      y: direction.y + entity.position.y
-    }))
-    .map(q => props.board.find(s => isEqual(s.position, q)))
-    .filter(
-      square =>
-        square && !entities.some(e => isEqual(e.position, square.position))
-    );
-};
-
 const useEntityPurpose = () => {
   const [entityTargetMovement, setEntityTargetMovement] = useState<
     Record<string, { x: number; y: number }>
@@ -220,6 +193,7 @@ const useEntityMovement = (
   },
   handlers: {
     moveEntity: typeof moveEntityAction;
+    runMinion: typeof runMinionMovement;
   }
 ) => {
   const timeoutRecordRef = useRef<Record<string, Timeout>>({});
@@ -227,83 +201,23 @@ const useEntityMovement = (
     updateEntityTargetMovement,
     entityTargetMovementRef
   } = useEntityPurpose();
-  const handleMovement = (
-    kind: "No moves" | "Moved" | "Position occupied",
-    key: string
-  ) => {
+  const handleMovement = (kind: "No moves" | "Moved" | "Position occupied") => {
     switch (kind) {
       case "No moves": {
+        console.log("no moves");
         return;
       }
       case "Moved": {
+        console.log("moved");
         return;
       }
       case "Position occupied": {
+        console.log("position occupied");
         return;
       }
     }
     invariant(!kind, "case not handled");
     throw new Error();
-  };
-
-  const handleGatherPoints = (entityKey: string) => {
-    handleMoveTowardClosestPoint(entityKey);
-  };
-
-  const handleMoveTowardClosestPoint = (entityKey: string) => {
-    const entity = props.entities[entityKey];
-    const entities = Object.values(props.entities);
-    const previousTarget = entityTargetMovementRef.current[entityKey];
-    const squareAtPreviousTarget = props.board.find(square =>
-      isEqual(square.position, previousTarget)
-    );
-    const entityAtPreviousTarget = entities.find(entity =>
-      isEqual(entity.position, previousTarget)
-    );
-    let closest: BoardSquare | undefined;
-    if (
-      previousTarget &&
-      squareAtPreviousTarget!.points &&
-      !entityAtPreviousTarget
-    ) {
-      closest = squareAtPreviousTarget!;
-    } else {
-      const sortedAvailableSquares = closestWhile(props.board, () => true)
-        .filter(square => square.points)
-        .filter(s => !entities.some(e => isEqual(e.position, s.position)));
-      if (sortedAvailableSquares.length) {
-        closest = sortedAvailableSquares[0];
-        updateEntityTargetMovement(entityKey, closest.position);
-      } else {
-        closest = undefined;
-      }
-    }
-
-    if (isEqual(entity.position, { x: 4, y: 0 })) {
-      console.log("My BUTTOHLE");
-      console.log(
-        closest,
-        closest && entities.find(e => isEqual(e.position, closest!.position))
-      );
-    }
-
-    const direction = closest && {
-      x: Math.sign(closest.position.x - entity.position.x),
-      y: Math.sign(closest.position.y - entity.position.y)
-    };
-    const targetPositionsInDirection =
-      direction &&
-      [direction, { ...direction, x: 0 }, { ...direction, y: 0 }]
-        .map(p => addP(entity.position, p))
-        .filter(p => !entities.some(e => isEqual(e.position, p)));
-    const targetPosition = sample(targetPositionsInDirection);
-    const towardClosest = targetPosition
-      ? props.board.find(square => isEqual(square.position, targetPosition))
-      : undefined;
-
-    handlers.moveEntity(entity, towardClosest, kind =>
-      handleMovement(kind, entityKey)
-    );
   };
 
   useEffect(() => {
@@ -313,29 +227,32 @@ const useEntityMovement = (
       }
     });
     Object.values(props.entities).forEach(entity => {
-      if (!timeoutRecordRef.current[entity.key]) {
-        timeoutRecordRef.current[entity.key] = timer();
+      let timeout: Timeout = timeoutRecordRef.current[entity.key];
+      if (!timeout) {
+        timeout = timeoutRecordRef.current[entity.key] = timer();
       }
-      if (!timeoutRecordRef.current[entity.key].going) {
-        timeoutRecordRef.current[entity.key].start(
-          () => handleGatherPoints(entity.key),
+      if (!timeout!.going) {
+        timeout!.start(
+          () => handlers.runMinion(entity.key, handleMovement),
           randomMinionMovementTime()
         );
       }
     });
-  }, [props.entities]);
+  }, [props.board, props.entities]);
 };
 
+// prettier-ignore
 type Props = {
   accolades: Root["accolades"];
-  board: Root["world"]["board"];
-  entities: Root["world"]["entities"];
-  player: Root["world"]["player"];
-  move: typeof moveAction;
-  randomPoint: typeof addRandomPoint;
+  board:     Root["world"]["board"];
+  entities:  Root["world"]["entities"];
+  player:    Root["world"]["player"];
+  move:         typeof moveAction;
+  randomPoint:  typeof addRandomPoint;
   purchaseCity: typeof purchaseCity;
-  addEntity: typeof addEntityAction;
-  moveEntity: typeof moveEntityAction;
+  addEntity:    typeof addEntityAction;
+  moveEntity:   typeof moveEntityAction;
+  runMinion:    typeof runMinionMovement;
 };
 
 export const App = connect(
@@ -350,12 +267,14 @@ export const App = connect(
     moveEntity: moveEntityAction,
     randomPoint: addRandomPoint,
     purchaseCity,
-    addEntity: addEntityAction
+    addEntity: addEntityAction,
+    runMinion: runMinionMovement
   }
 )((props: Props) => {
   usePlayerMovement(props.move);
   useAddRandomPointsToBoard(props.randomPoint);
   useEntityMovement(props, {
+    runMinion: props.runMinion,
     moveEntity: props.moveEntity
   });
   const { setMainRoute, route, routerProps } = useRouters(props);

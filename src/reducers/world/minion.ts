@@ -1,6 +1,6 @@
 import { sample, uniqueId } from "lodash";
 
-import { BoardSquare } from "./world";
+import { BoardSquare, Entity } from "./world";
 
 export type Minion = {
   type: "Minion";
@@ -9,6 +9,10 @@ export type Minion = {
   position: { x: number; y: number };
   maxPoints: number;
   points: number;
+  currentFocus: null | {
+    entity: Entity | null;
+    placement: BoardSquare;
+  };
 };
 
 const randomName = () => {
@@ -22,7 +26,8 @@ export const stubMinion = (position: { x: number; y: number }): Minion => ({
   name: randomName(),
   position,
   maxPoints: 10,
-  points: 0
+  points: 0,
+  currentFocus: null
 });
 
 export const nextMinionPrice = (board: BoardSquare[]) => {
