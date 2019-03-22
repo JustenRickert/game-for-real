@@ -1,6 +1,6 @@
 import { AnyAction } from "redux";
 import { ThunkAction } from "redux-thunk";
-import { isEqual, partial, sample } from "lodash";
+import { isEqual, partial, sample, isArray } from "lodash";
 import invariant from "invariant";
 
 import { Root } from "../../store";
@@ -75,26 +75,31 @@ export const runMinionMovement = (
   const entity = entitiesRecord[entityKey];
   const entities = Object.values(entitiesRecord);
   const { currentFocus } = entity;
-  let closest: BoardSquare | undefined;
+  let closest: BoardSquare | BoardSquare[] | undefined;
   if (
     currentFocus &&
     currentFocus.placement.points &&
     !board.find(s => isEqual(s.position, currentFocus.placement.position))
   ) {
     closest = currentFocus.placement;
-  } else if (closest && isEqual(entity, closest.position)) {
+  } else if (
+    closest &&
+    !isArray(closest) &&
+    isEqual(entity.position, closest.position)
+  ) {
     closest = undefined;
   } else {
-    const sortedAvailableSquares = closestWhile(board, () => true)
+    const sortedAvailableSquares = closestWhile(board, entity, () => true)
       .filter(square => square.points)
-      .filter(s => !entities.some(e => isEqual(e.position, s.position)));
+      .filter(s => !entities.some(e => isEqual(e.position, s.position)))
+      .slice(0, 3);
     if (sortedAvailableSquares.length) {
-      closest = sortedAvailableSquares[0];
+      closest = sortedAvailableSquares;
       dispatch(
         updateEntity(entityKey, entity => ({
           ...entity,
           currentFocus: {
-            placement: closest!,
+            placement: (closest as BoardSquare[])[0],
             entity: null
           }
         }))
@@ -103,38 +108,14 @@ export const runMinionMovement = (
   }
 
   invariant(
-    closest && !isEqual(closest.position, entity.position),
-    "Closest shouldn't be equal to the entity position"
+    isArray(closest) || !closest || !isEqual(closest.position, entity.position),
+    "closest is not valid"
   );
 
-  const direction = closest && {
-    x: Math.sign(closest.position.x - entity.position.x),
-    y: Math.sign(closest.position.y - entity.position.y)
-  };
-  const targetPositionsInDirection =
-    direction &&
-    [
-      direction,
-      ...(direction.x && direction.y
-        ? [{ ...direction, x: 0 }, { ...direction, y: 0 }]
-        : direction.x
-        ? [{ ...direction, y: direction.x }, { ...direction, y: -direction.x }]
-        : [
-            {
-              ...direction,
-              x: direction.y
-            },
-            { ...direction, x: -direction.y }
-          ])
-    ]
-      .map(p => addP(entity.position, p))
-      .filter(p => !entities.some(e => isEqual(e.position, p)));
-  const targetPosition = sample(targetPositionsInDirection);
-  const towardClosest = targetPosition
-    ? board.find(square => isEqual(square.position, targetPosition))
-    : undefined;
+  const targetPosition = isArray(closest) ? sample(closest) : closest;
+  const targetSquare = targetPosition;
 
-  dispatch(moveEntityAction(entity, towardClosest, handleMovement));
+  dispatch(moveEntityAction(entity, targetSquare, handleMovement));
 };
 
 export const moveEntityAction = (
@@ -153,10 +134,12 @@ export const moveEntityAction = (
     sendMovementStatus("Position occupied");
     return;
   }
-  sendMovementStatus("Moved");
-  const points = Math.min(entity.maxPoints - entity.points, square.points);
 
-  invariant(points < 0, "Points should not be negative");
+  sendMovementStatus("Moved");
+  const points = Math.max(
+    0,
+    Math.min(entity.maxPoints - entity.points, square.points)
+  );
   [
     updateEntity(entity.key, e => ({
       ...e,

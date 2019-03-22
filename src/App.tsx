@@ -153,37 +153,6 @@ const useRouters = (props: {
   };
 };
 
-const useEntityPurpose = () => {
-  const [entityTargetMovement, setEntityTargetMovement] = useState<
-    Record<string, { x: number; y: number }>
-  >({});
-  const entityTargetMovementRef = useRef(entityTargetMovement);
-
-  const updateEntityTargetMovement = (
-    entityKey: string,
-    position: { x: number; y: number } | null
-  ) => {
-    setEntityTargetMovement(record => {
-      let _: { x: number; y: number };
-      let newRecord: Record<string, { x: number; y: number }>;
-      if (!position) {
-        ({ [entityKey]: _, ...newRecord } = record);
-      } else {
-        newRecord = {
-          ...record,
-          [entityKey]: position
-        };
-      }
-      entityTargetMovementRef.current = newRecord;
-      return newRecord;
-    });
-  };
-  return {
-    updateEntityTargetMovement,
-    entityTargetMovementRef
-  };
-};
-
 const randomMinionMovementTime = () => randomTime(2500, 3500);
 const randomMinionSpawnTime = () => randomTime(2500, 5000);
 const useEntityMovement = (
@@ -197,10 +166,6 @@ const useEntityMovement = (
   }
 ) => {
   const timeoutRecordRef = useRef<Record<string, Timeout>>({});
-  const {
-    updateEntityTargetMovement,
-    entityTargetMovementRef
-  } = useEntityPurpose();
   const handleMovement = (kind: "No moves" | "Moved" | "Position occupied") => {
     switch (kind) {
       case "No moves": {
