@@ -27,7 +27,6 @@ import {
   MainContentRouter,
   SecondaryContentRouter
 } from "./RouteList";
-import { timeout } from "q";
 import { addP, distance, closestN, closestWhile } from "./util";
 
 const keys = <O extends {}>(o: O) => Object.keys(o) as (keyof O)[];
@@ -184,29 +183,15 @@ const useEntityMovement = (
       key: string
     ) => {
       switch (kind) {
-        case "No moves": {
-          console.log("no moves");
-          return;
-        }
-        case "Moved": {
-          console.log("moved");
-          return;
-        }
-        case "Position occupied": {
-          console.log("position occupied");
-          return;
-        }
+        case "No moves":
+        case "Moved":
+        case "Position occupied":
         case "Holding too many points": {
-          console.log("going any longer?", timeoutRecordRef.current[key].going);
-          timeoutRecordRef.current[key].start(
-            () => console.log("TODO need ot go home now"),
-            4 * randomMinionMovementTime()
-          );
+          console.log(kind);
           return;
         }
       }
-      invariant(!kind, "case not handled");
-      throw new Error();
+      throw new Error("Case not handled: " + kind);
     };
 
     Object.keys(timeoutRecordRef.current).forEach(key => {

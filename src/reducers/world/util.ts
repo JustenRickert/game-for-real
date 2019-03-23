@@ -1,4 +1,7 @@
 import { DIMENSIONS } from "../../config";
+import { City } from "./city";
+import { BoardSquare } from "./world";
+import { distance } from "../../util";
 
 const clamp = (position: { x: number; y: number }) => {
   const { x, y } = position;
@@ -22,4 +25,15 @@ export const move = (key: string, position: { x: number; y: number }) => {
       return clamp({ x, y: y + 1 });
   }
   return position;
+};
+
+export const getClosestCity = (
+  cities: Record<string, City>,
+  position: { x: number; y: number }
+) => {
+  const sortedCities = Object.values(cities).sort(
+    (c1, c2) =>
+      distance(c1.position, position) - distance(c2.position, position)
+  );
+  return sortedCities[0];
 };

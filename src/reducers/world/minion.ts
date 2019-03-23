@@ -9,10 +9,16 @@ export type Minion = {
   position: { x: number; y: number };
   maxPoints: number;
   points: number;
-  currentFocus: null | {
-    entity: Entity | null;
-    placement: BoardSquare;
-  };
+  currentFocus:
+    | null
+    | {
+        type: "BRINGING_POINTS_TO_CITY";
+        position: { x: number; y: number };
+      }
+    | {
+        type: "GETTING_POINTS";
+        position: { x: number; y: number };
+      };
 };
 
 const randomName = () => {

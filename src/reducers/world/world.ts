@@ -12,7 +12,6 @@ export type Entity = Minion;
 
 export type BoardSquare = {
   position: { x: number; y: number };
-  placement: City | null;
   points: number;
 };
 
@@ -22,8 +21,11 @@ export type WorldState = {
     position: { x: number; y: number };
   };
   entities: Record<string, Entity>;
+  cities: Record<string, City>;
   board: BoardSquare[];
 };
+
+export type CityAction = UpdateCity;
 
 export type WorldAction =
   | AddPlayerPointsAction
@@ -34,9 +36,7 @@ type BoardAction =
   | UpdatePlayer
   | UpdateBoard
   | UpdateEntity
-  | UpdateBoardCity
   | UpdateSquare
-  | PlaceBoardAction
   | AddBoardPoint
   | RemoveBoardPositionPoints;
 
@@ -45,12 +45,12 @@ enum Actions {
   BoardPlace = "World/Board/Place",
   MovePlayerPosition = "World/MovePlayerPosition",
   RemoveBoardPoints = "World/Board/RemoveBoardPoints",
-  UpdateBoardCity = "World/Board/UpdateCity",
   AddBoardPoint = "World/Board/AddPoint",
   UpdatePlayer = "World/Player/Update",
   UpdateEntity = "World/Board/Entity/Update",
   UpdateSquare = "World/Board/Square/Update",
-  UpdateBoard = "woarld/Board/Update"
+  UpdateBoard = "woarld/Board/Update",
+  UpdateCity = "World/City/Update"
 }
 
 export type AddPlayerPointsAction = {
@@ -181,36 +181,6 @@ export const addBoardPoint = (square: BoardSquare): AddBoardPoint => ({
   square
 });
 
-export type UpdateBoardCity = {
-  type: Actions.UpdateBoardCity;
-  square: BoardSquare;
-  update: (city: City) => City;
-};
-
-export const updateCity = (
-  square: BoardSquare,
-  update: (city: City) => City
-): UpdateBoardCity => ({
-  type: Actions.UpdateBoardCity,
-  square,
-  update
-});
-
-export type PlaceBoardAction = {
-  type: Actions.BoardPlace;
-  square: BoardSquare;
-  update: (placement: BoardSquare["placement"]) => BoardSquare["placement"];
-};
-
-export const placeBoardAction = (
-  square: BoardSquare,
-  update: (placement: BoardSquare["placement"]) => BoardSquare["placement"]
-): PlaceBoardAction => ({
-  type: Actions.BoardPlace,
-  square,
-  update
-});
-
 export type UpdateSquare = {
   type: Actions.UpdateSquare;
   square: BoardSquare;
@@ -250,24 +220,6 @@ export const boardReducer: Reducer<BoardSquare[], BoardAction> = (
         square === action.square ? action.update(square) : square
       );
     }
-    case Actions.UpdateBoardCity: {
-      return state.map(b => {
-        if (b === action.square) {
-          if (!b.placement || b.placement.type !== "City") {
-            throw new Error(`cant action ${action.type} on b.placement.type`);
-          }
-          return { ...b, placement: action.update(b.placement) };
-        }
-        return b;
-      });
-    }
-    case Actions.BoardPlace: {
-      return state.map(b =>
-        b === action.square
-          ? { ...b, placement: action.update(b.placement) }
-          : b
-      );
-    }
     case Actions.RemoveBoardPoints: {
       return state.map(b => (b === action.square ? { ...b, points: 0 } : b));
     }
@@ -280,8 +232,39 @@ export const boardReducer: Reducer<BoardSquare[], BoardAction> = (
   return state;
 };
 
+export type UpdateCity = {
+  type: Actions.UpdateCity;
+  cityKey: string;
+  update: (city: City) => City;
+};
+
+export const updateCity = (
+  key: string,
+  update: (city: City) => City
+): UpdateCity => ({
+  type: Actions.UpdateCity,
+  cityKey: key,
+  update
+});
+
+const citiesReducer: Reducer<WorldState["cities"], UpdateCity> = (
+  state = {},
+  action
+) => {
+  switch (action.type) {
+    case Actions.UpdateCity: {
+      return {
+        ...state,
+        [action.cityKey]: action.update(state[action.cityKey])
+      };
+    }
+  }
+  return state;
+};
+
 export const worldReducer = combineReducers({
   player: playerReducer,
+  cities: citiesReducer,
   entities: entitiesReducer,
   board: boardReducer
 });

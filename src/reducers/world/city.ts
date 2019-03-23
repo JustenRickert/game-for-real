@@ -1,12 +1,14 @@
-import { sample } from "lodash";
+import { sample, uniqueId } from "lodash";
 
 import { BoardSquare } from "./world";
 
 export type City = {
   type: "City";
+  key: string;
   name: string;
   health: number;
   points: number;
+  position: { x: number; y: number };
 };
 
 const randomName = () => {
@@ -14,13 +16,15 @@ const randomName = () => {
   return sample(names)!;
 };
 
-export const stubCity = (): City => ({
+export const stubCity = (position: { x: number; y: number }): City => ({
   type: "City",
+  key: uniqueId("city-"),
   name: randomName(),
   health: 100,
-  points: 0
+  points: 0,
+  position
 });
 
 export const nextCityPrice = (board: BoardSquare[]) => {
-  return board.map(b => b.placement).filter(Boolean).length + 1;
+  return 1;
 };

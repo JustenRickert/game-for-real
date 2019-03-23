@@ -13,15 +13,13 @@ import {
   MovePlayerPositionAction,
   removeBoardPositionPoints,
   RemoveBoardPositionPoints,
-  placeBoardAction,
-  PlaceBoardAction,
   AddPlayerPointsAction,
   addPlayerPointsAction,
   addBoardPoint,
   AddBoardPoint,
   WorldState,
-  UpdateBoardCity,
   updateCity,
+  UpdateCity,
   updatePlayer,
   UpdatePlayer,
   UpdateEntity,
@@ -32,9 +30,10 @@ import {
   UpdateBoard
 } from "./world";
 
-import { move } from "./util";
+import { move, getClosestCity } from "./util";
 import { stubMinion, nextMinionPrice } from "./minion";
 import { closestWhile, addP } from "../../util";
+import { isEmpty } from "rxjs/operators";
 
 enum Thunks {
   MovePlayer = "WORLD/MOVE_PLAYER_THUNK"
@@ -43,15 +42,18 @@ enum Thunks {
 type WorldThunk<A extends AnyAction> = ThunkAction<any, Root, any, A>;
 
 export const addRandomPoint = (): WorldThunk<
-  AddBoardPoint | AddPlayerPointsAction | UpdateBoardCity
+  AddBoardPoint | AddPlayerPointsAction | UpdateCity
 > => (dispatch, getState) => {
   const {
-    world: { board, player }
+    world: { board, player, cities }
   } = getState();
   const randomSquare = sample(board)!;
-  if (randomSquare.placement && randomSquare.placement.type === "City")
+  const cityAtSquare = Object.values(cities).find(c =>
+    isEqual(c.position, randomSquare.position)
+  );
+  if (cityAtSquare)
     dispatch(
-      updateCity(randomSquare, city => ({
+      updateCity(cityAtSquare.key, city => ({
         ...city,
         points: city.points + 1
       }))
@@ -65,16 +67,36 @@ export const addRandomPoint = (): WorldThunk<
   dispatch(checkAccolades);
 };
 
-export const runMinionMovement = (
+export const runMinionToClosestCity = (entityKey: string): WorldThunk<any> => (
+  dispatch,
+  getState
+) => {
+  const {
+    world: { entities, cities, board }
+  } = getState();
+  const entity = entities[entityKey];
+  const closestCitySquare = getClosestCity(cities, entity.position);
+  dispatch(
+    updateEntity(entityKey, entity => ({
+      ...entity,
+      position: closestCitySquare.position,
+      currentFocus: {
+        type: "BRINGING_POINTS_TO_CITY",
+        position: closestCitySquare.position
+      }
+    }))
+  );
+};
+
+type MovementError =
+  | "No moves"
+  | "Moved"
+  | "Position occupied"
+  | "Holding too many points";
+
+export const runMinionToClosePoints = (
   entityKey: string,
-  handleMovement: (
-    kind:
-      | "No moves"
-      | "Moved"
-      | "Position occupied"
-      | "Holding too many points",
-    entityKey: string
-  ) => void
+  handleMovement: (kind: MovementError, entityKey: string) => void
 ): WorldThunk<any> => (dispatch, getState) => {
   const {
     world: { board, entities: entitiesRecord }
@@ -82,32 +104,36 @@ export const runMinionMovement = (
   const entity = entitiesRecord[entityKey];
   const entities = Object.values(entitiesRecord);
   const { currentFocus } = entity;
-  let closest: BoardSquare | BoardSquare[] | undefined;
+  let closest:
+    | { x: number; y: number }
+    | { x: number; y: number }[]
+    | undefined;
   if (
     currentFocus &&
-    currentFocus.placement.points &&
-    !board.find(s => isEqual(s.position, currentFocus.placement.position))
+    currentFocus.position &&
+    !board.find(s => isEqual(s.position, currentFocus.position))
   ) {
-    closest = currentFocus.placement;
+    closest = currentFocus.position;
   } else if (
     closest &&
     !isArray(closest) &&
-    isEqual(entity.position, closest.position)
+    isEqual(entity.position, closest)
   ) {
     closest = undefined;
   } else {
     const sortedAvailableSquares = closestWhile(board, entity, () => true)
       .filter(square => square.points)
       .filter(s => !entities.some(e => isEqual(e.position, s.position)))
-      .slice(0, 3);
+      .slice(0, 3)
+      .map(square => square.position);
     if (sortedAvailableSquares.length) {
       closest = sortedAvailableSquares;
       dispatch(
         updateEntity(entityKey, entity => ({
           ...entity,
           currentFocus: {
-            placement: (closest as BoardSquare[])[0],
-            entity: null
+            type: "GETTING_POINTS",
+            position: sample(closest as { x: number; y: number }[])!
           }
         }))
       );
@@ -115,14 +141,33 @@ export const runMinionMovement = (
   }
 
   invariant(
-    isArray(closest) || !closest || !isEqual(closest.position, entity.position),
+    isArray(closest) || !closest || !isEqual(closest, entity.position),
     "closest is not valid"
   );
 
   const targetPosition = isArray(closest) ? sample(closest) : closest;
-  const targetSquare = targetPosition;
+  const targetSquare = board.find(square =>
+    isEqual(square.position, targetPosition)
+  );
 
   dispatch(moveEntityAction(entity, targetSquare, handleMovement));
+};
+
+export const runMinionMovement = (
+  entityKey: string,
+  handlePointsMovement: (kind: MovementError, entityKey: string) => void
+): WorldThunk<any> => (dispatch, getState) => {
+  const {
+    world: { entities: entitiesRecord }
+  } = getState();
+  const entity = entitiesRecord[entityKey];
+  const entities = Object.values(entitiesRecord);
+
+  if (entity.points >= entity.maxPoints) {
+    dispatch(runMinionToClosestCity(entityKey));
+  } else {
+    dispatch(runMinionToClosePoints(entityKey, handlePointsMovement));
+  }
 };
 
 export const moveEntityAction = (
@@ -209,20 +254,25 @@ export const moveAction = (
 export const purchaseCity = (
   square: BoardSquare,
   onPurchase: (kind: "Taken" | "Success" | "Not enough points") => void
-): WorldThunk<
-  PlaceBoardAction | UpdateBoardCity | UpdatePlayer | RemoveBoardPositionPoints
-> => (dispatch, getState) => {
+): WorldThunk<UpdateCity | UpdatePlayer | RemoveBoardPositionPoints> => (
+  dispatch,
+  getState
+) => {
   const {
-    world: { board, player }
+    world: { board, cities, player }
   } = getState();
-  if (square.placement) {
+  const cityAtSquare = Object.values(cities).find(city =>
+    isEqual(city.position, square.position)
+  );
+  if (cityAtSquare) {
     onPurchase("Taken");
     return;
   }
   if (nextCityPrice(board) <= player.points) {
     const points = square.points;
+    const newCity = stubCity(square.position);
     [
-      placeBoardAction(square, () => ({ ...stubCity(), points: points })),
+      updateCity(newCity.key, () => ({ ...newCity, points })),
       updatePlayer(player => ({
         ...player,
         points: player.points - nextCityPrice(board)
@@ -239,24 +289,26 @@ export const addEntityAction = (
   square: BoardSquare,
   onPurchase: (kind: "Not enough points" | "Success" | "Position taken") => void
 ): WorldThunk<any> => (dispatch, getState) => {
-  invariant(
-    square.placement,
-    "UI enforces only adding entities where there is a placement"
-  );
-  square;
   const {
-    world: { player, board }
+    world: { player, board, cities }
   } = getState();
+  const cityAtSquare = Object.values(cities).find(c =>
+    isEqual(c.position, square.position)
+  );
+  if (!cityAtSquare) {
+    console.log("ERROR?");
+    return;
+  }
   const pointsCost = nextMinionPrice(board);
-  if (pointsCost <= square.placement!.points) {
+  if (pointsCost <= cityAtSquare.points) {
     const minion = stubMinion(square.position);
     [
       updateEntity(minion.key, minion),
       updateSquare(square, square => ({
         ...square,
         placement: {
-          ...square.placement!,
-          points: square.placement!.points - pointsCost
+          ...cityAtSquare,
+          points: cityAtSquare.points - pointsCost
         }
       }))
     ].forEach(dispatch);
