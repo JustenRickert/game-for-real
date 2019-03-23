@@ -67,7 +67,14 @@ export const addRandomPoint = (): WorldThunk<
 
 export const runMinionMovement = (
   entityKey: string,
-  handleMovement: (kind: "No moves" | "Moved" | "Position occupied") => void
+  handleMovement: (
+    kind:
+      | "No moves"
+      | "Moved"
+      | "Position occupied"
+      | "Holding too many points",
+    entityKey: string
+  ) => void
 ): WorldThunk<any> => (dispatch, getState) => {
   const {
     world: { board, entities: entitiesRecord }
@@ -121,21 +128,31 @@ export const runMinionMovement = (
 export const moveEntityAction = (
   entity: Entity,
   square: BoardSquare | undefined,
-  sendMovementStatus: (kind: "No moves" | "Moved" | "Position occupied") => void
+  sendMovementStatus: (
+    kind:
+      | "No moves"
+      | "Moved"
+      | "Position occupied"
+      | "Holding too many points",
+    entityKey: string
+  ) => void
 ): WorldThunk<any> => (dispatch, getState) => {
   const {
     world: { board, entities }
   } = getState();
+  if (entity.maxPoints <= entity.points) {
+    sendMovementStatus("Holding too many points", entity.key);
+  }
   if (!square) {
-    sendMovementStatus("No moves");
+    sendMovementStatus("No moves", entity.key);
     return;
   }
   if (Object.values(entities).some(e => isEqual(e.position, square.position))) {
-    sendMovementStatus("Position occupied");
+    sendMovementStatus("Position occupied", entity.key);
     return;
   }
 
-  sendMovementStatus("Moved");
+  sendMovementStatus("Moved", entity.key);
   const points = Math.max(
     0,
     Math.min(entity.maxPoints - entity.points, square.points)

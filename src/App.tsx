@@ -35,22 +35,29 @@ const keys = <O extends {}>(o: O) => Object.keys(o) as (keyof O)[];
 type ArrowKey = "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";
 
 interface Timeout {
+  timeout: number;
   going: boolean;
   start(this: Timeout, fn: () => void, timeout: number): () => void;
+  restart(this: Timeout, fn: () => void, timeout: number): () => void;
 }
 
 const timer = (): Timeout => ({
+  timeout: -Infinity,
   going: false,
   start: function(this, fn, interval) {
     this.going = true;
-    const _timeout = setTimeout(() => {
+    this.timeout = setTimeout(() => {
       this.going = false;
       fn();
     }, interval);
     return () => {
-      clearTimeout(_timeout);
+      clearTimeout(this.timeout);
       this.going = false;
     };
+  },
+  restart: function(this, fn, interval) {
+    clearTimeout(this.timeout);
+    return this.start(fn, interval);
   }
 });
 
@@ -166,26 +173,42 @@ const useEntityMovement = (
   }
 ) => {
   const timeoutRecordRef = useRef<Record<string, Timeout>>({});
-  const handleMovement = (kind: "No moves" | "Moved" | "Position occupied") => {
-    switch (kind) {
-      case "No moves": {
-        console.log("no moves");
-        return;
-      }
-      case "Moved": {
-        console.log("moved");
-        return;
-      }
-      case "Position occupied": {
-        console.log("position occupied");
-        return;
-      }
-    }
-    invariant(!kind, "case not handled");
-    throw new Error();
-  };
 
   useEffect(() => {
+    const handleMovement = (
+      kind:
+        | "No moves"
+        | "Moved"
+        | "Position occupied"
+        | "Holding too many points",
+      key: string
+    ) => {
+      switch (kind) {
+        case "No moves": {
+          console.log("no moves");
+          return;
+        }
+        case "Moved": {
+          console.log("moved");
+          return;
+        }
+        case "Position occupied": {
+          console.log("position occupied");
+          return;
+        }
+        case "Holding too many points": {
+          console.log("going any longer?", timeoutRecordRef.current[key].going);
+          timeoutRecordRef.current[key].start(
+            () => console.log("TODO need ot go home now"),
+            4 * randomMinionMovementTime()
+          );
+          return;
+        }
+      }
+      invariant(!kind, "case not handled");
+      throw new Error();
+    };
+
     Object.keys(timeoutRecordRef.current).forEach(key => {
       if (!props.entities[key]) {
         delete timeoutRecordRef.current[key];
