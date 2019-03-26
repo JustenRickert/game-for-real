@@ -164,7 +164,12 @@ export const runMinionMovement = (
   const entities = Object.values(entitiesRecord);
 
   if (entity.points >= entity.maxPoints) {
-    dispatch(runMinionToClosestCity(entityKey));
+    if (
+      entity.currentFocus &&
+      entity.currentFocus.type === "BRINGING_POINTS_TO_CITY"
+    ) {
+      dispatch(runMinionToClosestCity(entityKey));
+    }
   } else {
     dispatch(runMinionToClosePoints(entityKey, handlePointsMovement));
   }
@@ -271,6 +276,7 @@ export const purchaseCity = (
   if (nextCityPrice(board) <= player.points) {
     const points = square.points;
     const newCity = stubCity(square.position);
+    console.log("should creat??");
     [
       updateCity(newCity.key, () => ({ ...newCity, points })),
       updatePlayer(player => ({

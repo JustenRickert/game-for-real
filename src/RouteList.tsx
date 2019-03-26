@@ -20,6 +20,7 @@ const keys = <T extends {}>(t: T) => Object.keys(t) as (keyof T)[];
 
 type GridPlayerProps = {
   board: GridProps["board"];
+  cities: Root["world"]["cities"];
   entities: Root["world"]["entities"];
   player: PlayerProps;
   onClickSquare: (square: BoardSquare) => void;
@@ -31,6 +32,7 @@ const GridPlayer = (props: GridPlayerProps) => {
       <h1 children="The Grid" />
       <Player position={props.player.position} />
       <Board
+        cities={props.cities}
         onClickSquare={props.onClickSquare}
         size={DIMENSIONS}
         board={props.board}

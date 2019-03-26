@@ -125,6 +125,7 @@ const useSecondaryRoute = (board: BoardSquare[]) => {
 const useRouters = (props: {
   accolades: Root["accolades"];
   board: Root["world"]["board"];
+  cities: Root["world"]["cities"];
   entities: Root["world"]["entities"];
   player: Root["world"]["player"];
   purchaseCity: typeof purchaseCity;
@@ -218,6 +219,7 @@ const useEntityMovement = (
 type Props = {
   accolades: Root["accolades"];
   board:     Root["world"]["board"];
+  cities:    Root['world']['cities']
   entities:  Root["world"]["entities"];
   player:    Root["world"]["player"];
   move:         typeof moveAction;
@@ -231,6 +233,7 @@ type Props = {
 export const App = connect(
   (state: Root) => ({
     accolades: state.accolades,
+    cities: state.world.cities,
     board: state.world.board,
     entities: state.world.entities,
     player: state.world.player

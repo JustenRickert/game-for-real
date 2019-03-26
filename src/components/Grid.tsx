@@ -14,6 +14,7 @@ import { BoardSquare } from "../reducers/world/world";
 
 export type GridProps = {
   size: { width: number; height: number };
+  cities: Root["world"]["cities"];
   board: Root["world"]["board"];
   entities: Root["world"]["entities"];
 
@@ -40,6 +41,9 @@ export const Board = (props: GridProps) => {
         const entity = Object.values(props.entities).find(entity =>
           isEqual(square.position, entity.position)
         );
+        const city = Object.values(props.cities).find(c =>
+          isEqual(square.position, c.position)
+        );
         return (
           <div
             key={i}
@@ -49,7 +53,7 @@ export const Board = (props: GridProps) => {
               backgroundColor: selection === i ? "lightgreen" : undefined
             }}
           >
-            <div children={square.placement ? square.placement.type : ""} />
+            {city && <div children={city.type} />}
             <div
               children={
                 entity ? "M" + (entity.points ? `(${entity.points})` : "") : ""
@@ -57,8 +61,8 @@ export const Board = (props: GridProps) => {
             />
             <div
               children={
-                square.placement && square.placement.type === "City"
-                  ? `${square.placement.points} CP`
+                city && city.type === "City"
+                  ? `${city.points} CP`
                   : square.points
               }
             />

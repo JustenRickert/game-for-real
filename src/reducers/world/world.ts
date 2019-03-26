@@ -253,6 +253,7 @@ const citiesReducer: Reducer<WorldState["cities"], UpdateCity> = (
 ) => {
   switch (action.type) {
     case Actions.UpdateCity: {
+      console.log(action.update(state[action.cityKey]));
       return {
         ...state,
         [action.cityKey]: action.update(state[action.cityKey])

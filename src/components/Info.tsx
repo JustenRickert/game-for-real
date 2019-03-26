@@ -5,7 +5,7 @@ import invariant from "invariant";
 import { Root } from "../store";
 import { BoardSquare, Entity } from "../reducers/world/world";
 import { purchaseCity, addEntityAction } from "../reducers/world/actions";
-import { nextCityPrice } from "../reducers/world/city";
+import { nextCityPrice, City } from "../reducers/world/city";
 import { nextMinionPrice } from "../reducers/world/minion";
 
 export type InfoProps = { player: Root["world"]["player"] };
@@ -67,6 +67,7 @@ const usePurchase = (square: BoardSquare) => {
 export type SquareInfoProps = {
   board: BoardSquare[];
   entities: Record<string, Entity>;
+  cities: Record<string, City>;
   selectedSquareIndex: number;
   onClickCloseSquare: () => void;
   purchaseCity: typeof purchaseCity;
@@ -83,6 +84,9 @@ export const SquareInfo = (props: SquareInfoProps) => {
   } = usePurchase(square);
   const entity = Object.values(props.entities).find(entity =>
     isEqual(entity.position, square.position)
+  );
+  const city = Object.values(props.cities).find(c =>
+    isEqual(c.position, square.position)
   );
   return (
     <>
@@ -103,7 +107,7 @@ export const SquareInfo = (props: SquareInfoProps) => {
       />
 
       <h3 children="Placement" />
-      {!square.placement ? (
+      {!city ? (
         <p children="Nothing here" />
       ) : (
         <>
@@ -125,7 +129,7 @@ export const SquareInfo = (props: SquareInfoProps) => {
       )}
 
       <h3 children="Actions" />
-      {!square.placement && (
+      {!city && (
         <p>
           {recentCityPurchaseMessage === "Taken" ? (
             <span children="That board position is taken" />
@@ -145,7 +149,7 @@ export const SquareInfo = (props: SquareInfoProps) => {
           )}
         </p>
       )}
-      {square.placement && !entity ? (
+      {city ? (
         <p>
           {recentEntityPurchaseMessage === "Not enough points" ? (
             <span children="Not enough points" />
