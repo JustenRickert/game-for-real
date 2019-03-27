@@ -1,9 +1,12 @@
-import { sample, uniqueId } from "lodash";
+import { sample, isEqual, uniqueId } from "lodash";
+import { Omit } from "lodash";
+import invariant from "invariant";
 
 import { BoardSquare, Entity } from "./world";
+import { City } from "./city";
 
 export type Minion = {
-  type: "Minion";
+  type: "minion";
   key: string;
   name: string;
   position: { x: number; y: number };
@@ -27,7 +30,7 @@ const randomName = () => {
 };
 
 export const stubMinion = (position: { x: number; y: number }): Minion => ({
-  type: "Minion",
+  type: "minion",
   key: uniqueId("minion-"),
   name: randomName(),
   position,
@@ -36,6 +39,9 @@ export const stubMinion = (position: { x: number; y: number }): Minion => ({
   currentFocus: null
 });
 
-export const nextMinionPrice = (board: BoardSquare[]) => {
-  return 1;
+export const nextMinionPrice = (entities: Record<string, Entity>) => {
+  const entitiesLength = Object.values(entities).filter(
+    entity => entity.type === "minion"
+  ).length;
+  return (entitiesLength + 1) ** 2;
 };

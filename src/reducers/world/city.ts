@@ -25,6 +25,7 @@ export const stubCity = (position: { x: number; y: number }): City => ({
   position
 });
 
-export const nextCityPrice = (board: BoardSquare[]) => {
-  return 1;
+export const nextCityPrice = (cities: Record<"string", City>) => {
+  const citiesLength = Object.values(cities).length;
+  return (citiesLength + 1) ** 2;
 };

@@ -3,12 +3,12 @@ import React, { useRef, MutableRefObject, useEffect, useState } from "react";
 import gridStyles from "./grid.module.css";
 import styles from "./player.module.css";
 
-const calcTranslate = (
+export const calcTranslate = (
   position: { x: number; y: number },
-  playerRef: MutableRefObject<null | HTMLDivElement>
+  ref: MutableRefObject<null | HTMLDivElement>
 ) => {
-  const { width, height } = playerRef.current
-    ? playerRef.current.getBoundingClientRect()
+  const { width, height } = ref.current
+    ? ref.current.getBoundingClientRect()
     : { width: 0, height: 0 };
   // prettier-ignore
   const translateX = [
@@ -29,7 +29,7 @@ const calcTranslate = (
   return `translate(${translateX}, ${translateY})`;
 };
 
-const useSingleResetToAllowRefSet = () => {
+export const useSingleResetToAllowRefSet = () => {
   const [reset, setReset] = useState(false);
   useEffect(() => {
     if (!reset) setReset(reset => !reset);

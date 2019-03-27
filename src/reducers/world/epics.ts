@@ -4,7 +4,7 @@ import { of } from "rxjs";
 import { delay, map } from "rxjs/operators";
 import { isEqual } from "lodash";
 
-import { moveEntityAction } from "./actions";
+import { moveMinionToPositionAction } from "./actions";
 import { BoardSquare, Entity } from "./world";
 
 import { Root } from "../../store";
@@ -82,7 +82,7 @@ export const minionClosestPointEpic: Epic<ClosestMinionAction, any, Root> = (
         { entities, board },
         entity
       );
-      return moveEntityAction(entity, square);
+      return moveMinionToPositionAction(entity, square);
     })
   );
 };

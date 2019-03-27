@@ -6,12 +6,11 @@ import { Player, PlayerProps } from "./components/Player";
 import {
   Info,
   InfoProps,
-  EntityInfo,
-  EntityInfoProps,
-  SquareInfo,
-  SquareInfoProps
+  SelectedInfo,
+  SelectedInfoProps
 } from "./components/Info";
 import { Board, GridProps } from "./components/Grid";
+import { EntityView, EntityViewProps } from "./components/Entity";
 import { Store, StoreProps } from "./components/Store";
 import { BoardSquare } from "./reducers/world/world";
 import { Root } from "./store";
@@ -31,6 +30,9 @@ const GridPlayer = (props: GridPlayerProps) => {
     <div>
       <h1 children="The Grid" />
       <Player position={props.player.position} />
+      {Object.values(props.entities).map(entity => (
+        <EntityView entity={entity} />
+      ))}
       <Board
         cities={props.cities}
         onClickSquare={props.onClickSquare}
@@ -67,14 +69,13 @@ export const MainContentRouter = (props: {
 };
 
 const secondaryRoutes = {
-  EntityInfo: EntityInfo,
   PlayerInfo: Info,
-  SquareInfo: SquareInfo
+  SquareInfo: SelectedInfo
 };
 
 export const SecondaryContentRouter = (props: {
-  route: "PlayerInfo" | "SquareInfo" | "EntityInfo";
-  routerProps: InfoProps & SquareInfoProps & EntityInfoProps;
+  route: "PlayerInfo" | "SquareInfo";
+  routerProps: InfoProps & SelectedInfoProps;
 }) => {
   return <div>{secondaryRoutes[props.route](props.routerProps)}</div>;
 };

@@ -1,14 +1,8 @@
 import React, { useRef, useState, useEffect, useReducer, Reducer } from "react";
 import { connect } from "react-redux";
 import { sample, range, isEqual, isNull, uniqWith } from "lodash";
-import invariant from "invariant";
 
-import {
-  Info,
-  SquareInfoProps,
-  InfoProps,
-  EntityInfoProps
-} from "./components/Info";
+import { Info, SelectedInfoProps, InfoProps } from "./components/Info";
 import { Board } from "./components/Grid";
 import { Player } from "./components/Player";
 import { MOVE_KEYS, DIMENSIONS } from "./config";
@@ -17,7 +11,7 @@ import {
   addRandomPoint,
   purchaseCity,
   addEntityAction,
-  moveEntityAction,
+  moveMinionToPositionAction,
   runMinionMovement
 } from "./reducers/world/actions";
 import { BoardSquare, Entity } from "./reducers/world/world";
@@ -142,7 +136,7 @@ const useRouters = (props: {
     ...props,
     onClickSquare: handleClickSquare
   };
-  const secondaryRouterProps: SquareInfoProps & InfoProps & EntityInfoProps = {
+  const secondaryRouterProps: SelectedInfoProps & InfoProps = {
     ...props,
     selectedSquareIndex: selectedSquareIndex!,
     onClickCloseSquare: handleClickCloseSquare
@@ -168,7 +162,7 @@ const useEntityMovement = (
     entities: Root["world"]["entities"];
   },
   handlers: {
-    moveEntity: typeof moveEntityAction;
+    moveEntity: typeof moveMinionToPositionAction;
     runMinion: typeof runMinionMovement;
   }
 ) => {
@@ -188,7 +182,6 @@ const useEntityMovement = (
         case "Moved":
         case "Position occupied":
         case "Holding too many points": {
-          console.log(kind);
           return;
         }
       }
@@ -226,7 +219,7 @@ type Props = {
   randomPoint:  typeof addRandomPoint;
   purchaseCity: typeof purchaseCity;
   addEntity:    typeof addEntityAction;
-  moveEntity:   typeof moveEntityAction;
+  moveEntity:   typeof moveMinionToPositionAction;
   runMinion:    typeof runMinionMovement;
 };
 
@@ -240,7 +233,7 @@ export const App = connect(
   }),
   {
     move: moveAction,
-    moveEntity: moveEntityAction,
+    moveEntity: moveMinionToPositionAction,
     randomPoint: addRandomPoint,
     purchaseCity,
     addEntity: addEntityAction,

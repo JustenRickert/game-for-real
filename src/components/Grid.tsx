@@ -10,7 +10,8 @@ import { isEqual, range } from "lodash";
 
 import styles from "./grid.module.css";
 import { Root } from "../store";
-import { BoardSquare } from "../reducers/world/world";
+import { BoardSquare, Entity } from "../reducers/world/world";
+import { City } from "../reducers/world/city";
 
 export type GridProps = {
   size: { width: number; height: number };
@@ -19,6 +20,31 @@ export type GridProps = {
   entities: Root["world"]["entities"];
 
   onClickSquare: (square: BoardSquare) => void;
+};
+
+const BoardSquare = (props: {
+  highlighted: boolean;
+  square: BoardSquare;
+  city: City | undefined;
+  entity: Entity | undefined;
+  onClickSquare: () => void;
+}) => {
+  const { x, y } = props.square.position;
+  return (
+    <div
+      key={[x, ",", y].join()}
+      onClick={props.onClickSquare}
+      className={styles.square}
+      style={{
+        backgroundColor: props.highlighted ? "lightgreen" : undefined
+      }}
+    >
+      {props.city && <div children={props.city.type} />}
+      <div
+        children={props.city ? `${props.city.points} CP` : props.square.points}
+      />
+    </div>
+  );
 };
 
 export const Board = (props: GridProps) => {
@@ -45,28 +71,13 @@ export const Board = (props: GridProps) => {
           isEqual(square.position, c.position)
         );
         return (
-          <div
-            key={i}
-            onClick={() => handleClickSquare(square, i)}
-            className={styles.square}
-            style={{
-              backgroundColor: selection === i ? "lightgreen" : undefined
-            }}
-          >
-            {city && <div children={city.type} />}
-            <div
-              children={
-                entity ? "M" + (entity.points ? `(${entity.points})` : "") : ""
-              }
-            />
-            <div
-              children={
-                city && city.type === "City"
-                  ? `${city.points} CP`
-                  : square.points
-              }
-            />
-          </div>
+          <BoardSquare
+            city={city}
+            entity={entity}
+            highlighted={selection === i}
+            square={square}
+            onClickSquare={() => handleClickSquare(square, i)}
+          />
         );
       })}
     </div>
