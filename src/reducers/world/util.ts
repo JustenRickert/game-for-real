@@ -1,3 +1,5 @@
+import { range } from "lodash";
+
 import { DIMENSIONS } from "../../config";
 import { City } from "./city";
 import { BoardSquare } from "./world";
@@ -37,3 +39,10 @@ export const getClosestCity = (
   );
   return sortedCities[0];
 };
+
+export const outerSquaresOfGrid = [
+  ...range(DIMENSIONS.width).map(i => ({ x: i, y: 0 })),
+  ...range(DIMENSIONS.width).map(i => ({ x: i, y: DIMENSIONS.width - 1 })),
+  ...range(DIMENSIONS.height).map(j => ({ x: 0, y: 0 })),
+  ...range(DIMENSIONS.height).map(j => ({ x: DIMENSIONS.height - 1, y: j }))
+];

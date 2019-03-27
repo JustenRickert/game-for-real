@@ -6,7 +6,7 @@ import { Root } from "../store";
 import { BoardSquare, Entity } from "../reducers/world/world";
 import { purchaseCity, addEntityAction } from "../reducers/world/actions";
 import { nextCityPrice, City } from "../reducers/world/city";
-import { nextMinionPrice, Minion } from "../reducers/world/minion";
+import { nextMinionPrice, Minion } from "../reducers/world/entity";
 
 export type InfoProps = { player: Root["world"]["player"] };
 

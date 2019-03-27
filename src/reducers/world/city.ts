@@ -1,6 +1,7 @@
 import { sample, uniqueId } from "lodash";
 
 import { BoardSquare } from "./world";
+import { randomCityName } from "./entity";
 
 export type City = {
   type: "City";
@@ -11,15 +12,10 @@ export type City = {
   position: { x: number; y: number };
 };
 
-const randomName = () => {
-  const names = ["Minneapolis", "Toogalooga", "Airplane City"];
-  return sample(names)!;
-};
-
 export const stubCity = (position: { x: number; y: number }): City => ({
   type: "City",
   key: uniqueId("city-"),
-  name: randomName(),
+  name: randomCityName(),
   health: 100,
   points: 0,
   position

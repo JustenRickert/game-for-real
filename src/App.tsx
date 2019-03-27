@@ -224,20 +224,22 @@ type Props = {
 };
 
 export const App = connect(
+  // prettier-ignore
   (state: Root) => ({
     accolades: state.accolades,
-    cities: state.world.cities,
-    board: state.world.board,
-    entities: state.world.entities,
-    player: state.world.player
+    board:     state.world.board,
+    cities:    state.world.cities,
+    entities:  state.world.entities,
+    player:    state.world.player
   }),
+  // prettier-ignore
   {
-    move: moveAction,
-    moveEntity: moveMinionToPositionAction,
-    randomPoint: addRandomPoint,
     purchaseCity,
-    addEntity: addEntityAction,
-    runMinion: runMinionMovement
+    move:        moveAction,
+    moveEntity:  moveMinionToPositionAction,
+    randomPoint: addRandomPoint,
+    addEntity:   addEntityAction,
+    runMinion:   runMinionMovement
   }
 )((props: Props) => {
   usePlayerMovement(props.move);

@@ -31,7 +31,7 @@ const GridPlayer = (props: GridPlayerProps) => {
       <h1 children="The Grid" />
       <Player position={props.player.position} />
       {Object.values(props.entities).map(entity => (
-        <EntityView entity={entity} />
+        <EntityView key={entity.key} entity={entity} />
       ))}
       <Board
         cities={props.cities}

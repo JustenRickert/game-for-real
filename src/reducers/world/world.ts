@@ -6,9 +6,9 @@ import { DIMENSIONS } from "../../config";
 
 import { move } from "./util";
 import { City, stubCity } from "./city";
-import { Minion } from "./minion";
+import { Minion, Stealer } from "./entity";
 
-export type Entity = Minion;
+export type Entity = Minion | Stealer;
 
 export type BoardSquare = {
   position: { x: number; y: number };
@@ -35,7 +35,7 @@ export type WorldAction =
 type BoardAction =
   | UpdatePlayer
   | UpdateBoard
-  | UpdateEntity
+  | UpdateEntity<Entity>
   | UpdateSquare
   | AddBoardPoint
   | RemoveBoardPositionPoints;
@@ -114,22 +114,22 @@ const playerReducer: Reducer<WorldState["player"], WorldAction> = (
   return state;
 };
 
-export type UpdateEntity = {
+export type UpdateEntity<T extends Entity> = {
   type: Actions.UpdateEntity;
   key: string;
-  update: Entity | ((entity: Entity) => Entity);
+  update: T | ((entity: T) => T);
 };
 
-export const updateEntity = (
+export const updateEntity = <T extends Entity>(
   key: string,
-  update: Entity | ((entity: Entity) => Entity)
-): UpdateEntity => ({
+  update: T | ((entity: T) => T)
+): UpdateEntity<T> => ({
   type: Actions.UpdateEntity,
   key,
   update
 });
 
-const entitiesReducer: Reducer<WorldState["entities"], UpdateEntity> = (
+const entitiesReducer: Reducer<WorldState["entities"], UpdateEntity<Entity>> = (
   state = {},
   action
 ) => {

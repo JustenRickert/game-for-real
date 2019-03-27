@@ -18,7 +18,6 @@ export type GridProps = {
   cities: Root["world"]["cities"];
   board: Root["world"]["board"];
   entities: Root["world"]["entities"];
-
   onClickSquare: (square: BoardSquare) => void;
 };
 

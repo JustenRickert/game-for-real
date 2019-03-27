@@ -23,17 +23,22 @@ import {
   updatePlayer,
   UpdatePlayer,
   UpdateEntity,
-  BoardSquare,
   updateEntity,
+  BoardSquare,
   updateSquare,
   updateBoard,
   UpdateBoard
 } from "./world";
 
-import { move, getClosestCity } from "./util";
-import { stubMinion, nextMinionPrice, Minion } from "./minion";
+import { move, getClosestCity, outerSquaresOfGrid } from "./util";
+import {
+  stubMinion,
+  nextMinionPrice,
+  Minion,
+  stubStealer,
+  Stealer
+} from "./entity";
 import { closestWhile, addP } from "../../util";
-import { isEmpty } from "rxjs/operators";
 
 enum Thunks {
   MovePlayer = "WORLD/MOVE_PLAYER_THUNK"
@@ -76,16 +81,20 @@ export const runMinionToClosestCity = (entityKey: string): WorldThunk<any> => (
   } = getState();
   const entity = entities[entityKey];
   const closestCitySquare = getClosestCity(cities, entity.position);
-  dispatch(
-    updateEntity(entityKey, entity => ({
-      ...entity,
-      position: closestCitySquare.position,
-      currentFocus: {
-        type: "BRINGING_POINTS_TO_CITY",
-        position: closestCitySquare.position
-      }
-    }))
-  );
+  switch (entity.type) {
+    case "minion":
+      dispatch(
+        updateEntity(entityKey, (entity: Minion) => ({
+          ...entity,
+          position: closestCitySquare.position,
+          currentFocus: {
+            type: "BRINGING_POINTS_TO_CITY",
+            position: closestCitySquare.position
+          }
+        }))
+      );
+      break;
+  }
 };
 
 type MovementError =
@@ -102,7 +111,7 @@ export const runMinionToClosePoints = (
     world: { board, entities: entitiesRecord }
   } = getState();
   const entities = Object.values(entitiesRecord);
-  const minion = entitiesRecord[minionKey];
+  const minion = entitiesRecord[minionKey] as Minion;
   const { currentFocus } = minion;
   let closest:
     | { x: number; y: number }
@@ -129,7 +138,7 @@ export const runMinionToClosePoints = (
     if (sortedAvailableSquares.length) {
       closest = sortedAvailableSquares;
       dispatch(
-        updateEntity(minion.key, minion => ({
+        updateEntity<Minion>(minion.key, minion => ({
           ...minion,
           currentFocus: {
             type: "GETTING_POINTS",
@@ -169,7 +178,7 @@ export const runMinionDeliverPoints = (minion: Minion): WorldThunk<any> => (
       ...city,
       points: city.points + 1
     })),
-    updateEntity(minion.key, minion => ({
+    updateEntity<Minion>(minion.key, minion => ({
       ...minion,
       points: minion.points - 1
     }))
@@ -183,13 +192,10 @@ export const runMinionMovement = (
   const {
     world: { entities: entitiesRecord, cities }
   } = getState();
-  const minion = entitiesRecord[minionKey];
-
-  const stateMinion = entitiesRecord[minionKey];
-
+  const minion = entitiesRecord[minionKey] as Minion;
+  const stateMinion = entitiesRecord[minionKey] as Minion;
   const start = () =>
     dispatch(runMinionToClosePoints(minionKey, handlePointsMovement));
-
   if (!minion.currentFocus) {
     start();
     return;
@@ -212,6 +218,33 @@ export const runMinionMovement = (
       }
       return;
     }
+  }
+};
+
+export const runStealer = (stealerKey: string): WorldThunk<any> => (
+  dispatch,
+  getState
+) => {
+  const {
+    world: { entities }
+  } = getState();
+  const stealer = entities[stealerKey] as Stealer;
+  if (!stealer.currentFocus) {
+    return;
+  }
+  switch (stealer.currentFocus.type) {
+    case "STEALING_POINTS":
+    // if (entity nearby) {
+    //   dispatch(runStealerAttackEnemy())
+    //   break
+    // }
+    // dispatch(runStealerMoveToNearbyPoints())
+    case "ATTACKING_ENTITY":
+    // if (minion within range) {
+    //   dispatch(runStealAttackMinion)
+    //   break
+    // }
+    // dispatch(runStealerMoveToNearbyMinion)
   }
 };
 
@@ -245,10 +278,10 @@ export const moveMinionToPositionAction = (
     Math.min(minion.maxPoints - minion.points, square.points)
   );
   [
-    updateEntity(minion.key, e => ({
-      ...e,
+    updateEntity<Minion>(minion.key, minion => ({
+      ...minion,
       position: square.position,
-      points: e.points + points
+      points: minion.points + points
     })),
     updateBoard(squares =>
       squares.map(s =>
@@ -329,29 +362,45 @@ export const purchaseCity = (
 };
 
 export const addEntityAction = (
-  square: BoardSquare,
+  square: BoardSquare | undefined,
+  kind: "minion" | "stealer",
   onPurchase: (kind: "Not enough points" | "Success" | "Position taken") => void
 ): WorldThunk<any> => (dispatch, getState) => {
   const {
     world: { player, board, cities, entities }
   } = getState();
-  const cityAtSquare = Object.values(cities).find(c =>
-    isEqual(c.position, square.position)
-  );
-  if (!cityAtSquare) {
-    console.log("ERROR?");
-    return;
-  }
+  let cityAtSquare =
+    square &&
+    Object.values(cities).find(c => isEqual(c.position, square.position));
   const pointsCost = nextMinionPrice(entities);
-  if (pointsCost <= cityAtSquare.points) {
-    const minion = stubMinion(square.position);
+  let newPosition: { x: number; y: number };
+  if (pointsCost <= cityAtSquare!.points) {
+    let entity: Entity;
+    switch (kind) {
+      case "minion":
+        if (!square) {
+          throw new Error();
+        }
+        entity = stubMinion(square.position);
+        break;
+      case "stealer":
+        newPosition = Object.values(cities).find(square =>
+          isEqual(square.position, sample(outerSquaresOfGrid)!)
+        )!.position;
+        entity = stubStealer(square ? square.position : newPosition);
+        break;
+      default:
+        throw new Error();
+    }
+    const squareAtNewPosition =
+      square || board.find(square => isEqual(square.position, newPosition))!;
     [
-      updateEntity(minion.key, minion),
-      updateSquare(square, square => ({
+      updateEntity(entity.key, entity),
+      updateSquare(squareAtNewPosition, square => ({
         ...square,
         placement: {
           ...cityAtSquare,
-          points: cityAtSquare.points - pointsCost
+          points: cityAtSquare!.points - pointsCost
         }
       }))
     ].forEach(dispatch);
