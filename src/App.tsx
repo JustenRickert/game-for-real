@@ -12,7 +12,8 @@ import {
   purchaseCity,
   addEntityAction,
   moveMinionToPositionAction,
-  runMinionMovement
+  runMinionMovement,
+  runStealerMovement
 } from "./reducers/world/actions";
 import { BoardSquare, Entity } from "./reducers/world/world";
 import { Root, store } from "./store";
@@ -22,6 +23,8 @@ import {
   SecondaryContentRouter
 } from "./RouteList";
 import { addP, distance, closestN, closestWhile } from "./util";
+import { Minion, Stealer } from "./reducers/world/entity";
+import { timeout } from "q";
 
 const keys = <O extends {}>(o: O) => Object.keys(o) as (keyof O)[];
 
@@ -164,6 +167,7 @@ const useEntityMovement = (
   handlers: {
     moveEntity: typeof moveMinionToPositionAction;
     runMinion: typeof runMinionMovement;
+    runStealer: typeof runStealerMovement;
   }
 ) => {
   const timeoutRecordRef = useRef<Record<string, Timeout>>({});
@@ -188,6 +192,14 @@ const useEntityMovement = (
       throw new Error("Case not handled: " + kind);
     };
 
+    const handleRunMinion = (minion: Minion) => {
+      handlers.runMinion(minion.key, handleMovement);
+    };
+
+    const handleRunStealer = (stealer: Stealer) => {
+      handlers.runStealer(stealer.key);
+    };
+
     Object.keys(timeoutRecordRef.current).forEach(key => {
       if (!props.entities[key]) {
         delete timeoutRecordRef.current[key];
@@ -199,10 +211,15 @@ const useEntityMovement = (
         timeout = timeoutRecordRef.current[entity.key] = timer();
       }
       if (!timeout!.going) {
-        timeout!.start(
-          () => handlers.runMinion(entity.key, handleMovement),
-          randomMinionMovementTime()
-        );
+        timeout!.start(() => {
+          switch (entity.type) {
+            case "minion":
+              handleRunMinion(entity);
+              return;
+            case "stealer":
+              handleRunStealer(entity);
+          }
+        }, randomMinionMovementTime());
       }
     });
   }, [props.board, props.entities]);
@@ -221,6 +238,7 @@ type Props = {
   addEntity:    typeof addEntityAction;
   moveEntity:   typeof moveMinionToPositionAction;
   runMinion:    typeof runMinionMovement;
+  runStealer:   typeof runStealerMovement;
 };
 
 export const App = connect(
@@ -239,7 +257,8 @@ export const App = connect(
     moveEntity:  moveMinionToPositionAction,
     randomPoint: addRandomPoint,
     addEntity:   addEntityAction,
-    runMinion:   runMinionMovement
+    runMinion:   runMinionMovement,
+    runStealer:  runStealerMovement
   }
 )((props: Props) => {
   usePlayerMovement(props.move);

@@ -5,7 +5,7 @@ import invariant from "invariant";
 import { BoardSquare, Entity } from "./world";
 import { City } from "./city";
 
-export type EntityBase<T extends string> = {
+export type EntityBase<T extends "minion" | "stealer"> = {
   type: T;
   key: string;
   name: string;
@@ -30,15 +30,15 @@ export type Minion = EntityBase<"minion"> & {
 
 export type Stealer = EntityBase<"stealer"> & {
   type: "stealer";
+  points: number;
   currentFocus:
     | null
     | {
         type: "STEALING_POINTS";
-        position: { x: number; y: number };
       }
     | {
-        type: "ATTACKING_ENTITY";
-        entityKey: string;
+        type: "ATTACKING_MINION";
+        minionKey: string;
       };
 };
 
@@ -108,6 +108,7 @@ export const stubMinion = (position: { x: number; y: number }): Minion => ({
 export const stubStealer = (position: { x: number; y: number }): Stealer => ({
   type: "stealer",
   key: uniqueId("stealer"),
+  points: 0,
   position,
   name: randomName(),
   currentFocus: null
