@@ -31,6 +31,7 @@ export type Minion = EntityBase<"minion"> & {
 export type Stealer = EntityBase<"stealer"> & {
   type: "stealer";
   points: number;
+  attack: number;
   currentFocus:
     | null
     | {
@@ -107,6 +108,7 @@ export const stubMinion = (position: { x: number; y: number }): Minion => ({
 
 export const stubStealer = (position: { x: number; y: number }): Stealer => ({
   type: "stealer",
+  attack: 3,
   key: uniqueId("stealer"),
   points: 0,
   position,

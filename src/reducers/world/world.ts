@@ -18,6 +18,7 @@ export type BoardSquare = {
 export type WorldState = {
   player: {
     points: number;
+    maxPoints: number;
     position: { x: number; y: number };
   };
   entities: Record<string, Entity>;
@@ -93,6 +94,7 @@ export const updatePlayer = (
 const playerReducer: Reducer<WorldState["player"], WorldAction> = (
   state = {
     points: 0,
+    maxPoints: 100,
     position: { x: 0, y: 0 }
   },
   action

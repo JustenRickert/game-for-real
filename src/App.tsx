@@ -11,10 +11,10 @@ import {
   addRandomPoint,
   purchaseCity,
   addEntityAction,
-  moveMinionToPositionAction,
   runMinionMovement,
   runStealerMovement
 } from "./reducers/world/actions";
+import { moveMinionToPositionAction } from "./reducers/world/entity-actions";
 import { BoardSquare, Entity } from "./reducers/world/world";
 import { Root, store } from "./store";
 import {
@@ -119,14 +119,15 @@ const useSecondaryRoute = (board: BoardSquare[]) => {
   };
 };
 
-const useRouters = (props: {
-  accolades: Root["accolades"];
-  board: Root["world"]["board"];
-  cities: Root["world"]["cities"];
-  entities: Root["world"]["entities"];
-  player: Root["world"]["player"];
-  purchaseCity: typeof purchaseCity;
-  addEntity: typeof addEntityAction;
+const useRouters = (props: // prettier-ignore
+{
+    accolades: Root["accolades"];
+    board:     Root["world"]["board"];
+    cities:    Root["world"]["cities"];
+    entities:  Root["world"]["entities"];
+    player:    Root["world"]["player"];
+    purchaseCity: typeof purchaseCity;
+    addEntity:    typeof addEntityAction;
 }) => {
   const [routeMain, setMainRoute] = useState<"Grid" | "Store">("Grid");
   const {
@@ -165,7 +166,6 @@ const useEntityMovement = (
     entities: Root["world"]["entities"];
   },
   handlers: {
-    moveEntity: typeof moveMinionToPositionAction;
     runMinion: typeof runMinionMovement;
     runStealer: typeof runStealerMovement;
   }
@@ -225,6 +225,15 @@ const useEntityMovement = (
   }, [props.board, props.entities]);
 };
 
+const useStealerAutoGeneration = (
+  props: {},
+  handlers: {
+    addStealer: typeof add;
+  }
+) => {
+  return;
+};
+
 // prettier-ignore
 type Props = {
   accolades: Root["accolades"];
@@ -245,10 +254,7 @@ export const App = connect(
   // prettier-ignore
   (state: Root) => ({
     accolades: state.accolades,
-    board:     state.world.board,
-    cities:    state.world.cities,
-    entities:  state.world.entities,
-    player:    state.world.player
+    ...state.world,
   }),
   // prettier-ignore
   {
@@ -258,14 +264,15 @@ export const App = connect(
     randomPoint: addRandomPoint,
     addEntity:   addEntityAction,
     runMinion:   runMinionMovement,
-    runStealer:  runStealerMovement
+    runStealer:  runStealerMovement,
   }
 )((props: Props) => {
   usePlayerMovement(props.move);
   useAddRandomPointsToBoard(props.randomPoint);
   useEntityMovement(props, {
     runMinion: props.runMinion,
-    moveEntity: props.moveEntity
+    moveEntity: props.moveEntity,
+    runStealer: props.runStealer
   });
   const { setMainRoute, route, routerProps } = useRouters(props);
   return (

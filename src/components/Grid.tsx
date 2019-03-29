@@ -40,7 +40,7 @@ const BoardSquare = (props: {
     >
       {props.city && <div children={props.city.type} />}
       <div
-        children={props.city ? `${props.city.points} CP` : props.square.points}
+        children={props.city ? `${props.city.points} $` : props.square.points}
       />
     </div>
   );

@@ -20,7 +20,7 @@ import {
   updatePlayer,
   updateSquare
 } from "./world";
-import { closestWhile, addP } from "../../util";
+import { closestWhile, addP, distance } from "../../util";
 
 export const moveMinionToPositionAction = (
   minion: Minion,
@@ -186,7 +186,15 @@ export const runMinionToClosePoints = (
 export const runStealerAttackMinion = (
   stealer: Stealer,
   minion: Minion
-): WorldThunk<any> => (dispatch, getState) => {};
+): WorldThunk<any> => (dispatch, getState) => {
+  const d = distance(stealer.position, minion.position);
+  if (d === 2) {
+    // move to point between stealer and minion if available
+  } else if (d === 1) {
+  } else {
+    // wait
+  }
+};
 
 export const runStealerStealPoints = (stealerKey: string): WorldThunk<any> => (
   dispatch,

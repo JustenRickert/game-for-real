@@ -171,18 +171,46 @@ const Actions = (props: {
   );
 };
 
+const Minion = (minion: Minion) => {
+  return;
+};
+
+const disptachEntityInfo = (entity: Entity) => {
+  let children: React.ReactNode;
+  switch (entity.type) {
+    case "stealer":
+      {
+        children = [
+          [
+            `Stealer ${entity.name}`,
+            entity.currentFocus &&
+              entity.currentFocus.type === "ATTACKING_MINION" &&
+              `(${entity.attack})`
+          ]
+            .filter(Boolean)
+            .join(""),
+          `Point${entity.points === 1 ? "" : "s"} stolen ${entity.points}`
+        ].map(stat => <li children={stat} />);
+      }
+      break;
+    case "minion": {
+      children = [
+        `Minion ${entity.name}`,
+        `Points ${entity.points}/${entity.maxPoints}`
+      ].map(stat => <li children={stat} />);
+      break;
+    }
+    default:
+      throw new Error();
+  }
+  return <ul children={children} />;
+};
+
 const EntityInfo = (props: { entity: Entity | undefined }) => {
   return !props.entity ? null : (
     <>
       <h2 children="Entity" />
-      <ul>
-        {[
-          `Minion ${props.entity.name}`,
-          `$Points ${props.entity.points}/${props.entity.maxPoints}`
-        ].map(stat => (
-          <li children={stat} />
-        ))}
-      </ul>
+      {disptachEntityInfo(props.entity)}
     </>
   );
 };
@@ -226,7 +254,9 @@ export const SelectedInfo = (props: SelectedInfoProps) => {
         recentCityPurchaseMessage={recentCityPurchaseMessage}
         recentEntityPurchaseMessage={recentEntityPurchaseMessage}
         purchaseCity={() => props.purchaseCity(square, handlePurchaseCity)}
-        addEntity={() => props.addEntity(square, handlePurchaseEntity)}
+        addEntity={() =>
+          props.addEntity(square, "minion", handlePurchaseEntity)
+        }
       />
     </>
   );

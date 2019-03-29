@@ -141,7 +141,7 @@ export const runStealerMovement = (stealerKey: string): WorldThunk<any> => (
       dispatch(runStealerStealPoints(stealerKey));
       break;
     case "ATTACKING_MINION":
-      if (distance(closestMinion.position, stealer.position) < 2) {
+      if (distance(closestMinion.position, stealer.position) < 3) {
         dispatch(runStealerAttackMinion(stealer, closestMinion));
         break;
       }
@@ -215,52 +215,65 @@ export const purchaseCity = (
   onPurchase("Not enough points");
 };
 
+export const addMinion = (square: BoardSquare): WorldThunk<any> => (
+  dispatch,
+  getState
+) => {
+  const {
+    world: { cities, entities }
+  } = getState();
+  const cityAtSquare = Object.values(cities).find(city =>
+    isEqual(square.position, city.position)
+  );
+  if (!cityAtSquare) throw new Error();
+  const price = nextMinionPrice(entities);
+  const minion = stubMinion(square.position);
+  if (cityAtSquare.points < price) throw new Error();
+  dispatch(updateEntity(minion.key, minion));
+  dispatch(
+    updateCity(cityAtSquare.key, city => ({
+      ...city,
+      points: city.points - price
+    }))
+  );
+};
+
+export const addStealer = (): WorldThunk<any> => (dispatch, getState) => {
+  const {
+    world: { board, entities: entitiesRecord }
+  } = getState();
+  const entities = Object.values(entitiesRecord);
+  const position = sample(
+    outerSquaresOfGrid.filter(p => !entities.some(e => isEqual(p, e.position)))
+  );
+  const squareAtPosition = board.find(s => isEqual(s.position, position))!;
+  if (!position) return;
+  const stealer = stubStealer(position);
+  dispatch(
+    updateEntity(stealer.key, () => ({
+      ...stealer,
+      points: squareAtPosition.points
+    }))
+  );
+  dispatch(
+    updateSquare(squareAtPosition, square => ({
+      ...square,
+      points: 0
+    }))
+  );
+};
+
 export const addEntityAction = (
   square: BoardSquare | undefined,
-  kind: "minion" | "stealer",
-  onPurchase: (kind: "Not enough points" | "Success" | "Position taken") => void
+  kind: "minion" | "stealer"
 ): WorldThunk<any> => (dispatch, getState) => {
-  const {
-    world: { player, board, cities, entities }
-  } = getState();
-  let cityAtSquare =
-    square &&
-    Object.values(cities).find(c => isEqual(c.position, square.position));
-  const pointsCost = nextMinionPrice(entities);
-  let newPosition: { x: number; y: number };
-  if (pointsCost <= cityAtSquare!.points) {
-    let entity: Entity;
-    switch (kind) {
-      case "minion":
-        if (!square) {
-          throw new Error();
-        }
-        entity = stubMinion(square.position);
-        break;
-      case "stealer":
-        newPosition = Object.values(cities).find(square =>
-          isEqual(square.position, sample(outerSquaresOfGrid)!)
-        )!.position;
-        entity = stubStealer(square ? square.position : newPosition);
-        break;
-      default:
-        throw new Error();
-    }
-    const squareAtNewPosition =
-      square || board.find(square => isEqual(square.position, newPosition))!;
-    [
-      updateEntity(entity.key, entity),
-      updateSquare(squareAtNewPosition, square => ({
-        ...square,
-        placement: {
-          ...cityAtSquare,
-          points: cityAtSquare!.points - pointsCost
-        }
-      }))
-    ].forEach(dispatch);
-    onPurchase("Success");
-    return;
-  } else {
-    onPurchase("Not enough points");
+  switch (kind) {
+    case "minion":
+      if (!square) throw new Error();
+      dispatch(addMinion(square));
+      break;
+    case "stealer":
+      dispatch(addStealer());
+      break;
   }
 };
